@@ -1,0 +1,20 @@
+{
+  "name": "critsit-dashboard-test",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Live view of AA/AE/gStore ticket reports and IM Bridge cases from Salesforce",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "dependencies": {
+    "@google-cloud/bigquery": "^9.0.3",
+    "dotenv": "^16.4.5",
+    "exceljs": "^4.4.0",
+    "express": "^4.19.2"
+  }
+}

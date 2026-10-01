@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CritSit Dashboard</title>
+  <link rel="icon" type="image/jpeg" href="go-logo.jpg" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="bg-decor" aria-hidden="true">
+    <span class="blob blob-a"></span>
+    <span class="blob blob-b"></span>
+    <span class="blob blob-c"></span>
+    <span class="bg-grid"></span>
+    <span class="bg-vignette"></span>
+  </div>
+
+  <header class="topbar">
+    <div class="topbar-title">
+      <span class="brand-mark">
+        <img src="go-logo.jpg" alt="" width="34" height="34" />
+      </span>
+      <div class="title-block">
+        <h1>CritSit Dashboard</h1>
+        <span class="subtitle">GreyOrange Service &middot; Live Operations</span>
+      </div>
+    </div>
+    <nav class="page-nav" aria-label="Primary">
+      <a href="index.html" class="page-nav-link is-active">Home</a>
+      <a href="software-stability.html" class="page-nav-link">Software Stability</a>
+      <a href="ticket-health.html" class="page-nav-link">Ticket Health</a>
+    </nav>
+    <div class="topbar-meta">
+      <span class="env-pill">
+        <span class="env-dot" aria-hidden="true"></span>
+        Production
+      </span>
+      <button id="refreshBtn" class="refresh-btn" type="button">
+        <svg id="refreshIcon" class="refresh-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M20 11A8.1 8.1 0 0 0 4.5 9M4 5v4h4M4 13a8.1 8.1 0 0 0 15.5 2M20 19v-4h-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>Refresh</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="shell">
+    <div id="errorBanner" class="error-banner" role="alert" hidden>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="12" cy="12" r="9.5" stroke="currentColor" stroke-width="1.8"/>
+        <path d="M12 7.5v6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        <circle cx="12" cy="17" r="1" fill="currentColor"/>
+      </svg>
+      <span id="errorText"></span>
+    </div>
+
+    <!-- Hero summary -->
+    <section class="hero-card" aria-label="Total open tickets summary">
+      <div class="hero-left">
+        <div class="ring ring--hero" id="heroRing" style="--pct: 0; --ring-color: var(--primary);">
+          <div class="ring-center">
+            <span class="ring-value" id="heroTotalValue">0</span>
+            <span class="ring-caption">OPEN</span>
+          </div>
+        </div>
+        <div class="hero-info">
+          <span class="hero-eyebrow">Total Open Tickets</span>
+          <h2 class="hero-headline" id="heroHeadline">All systems clear</h2>
+          <div class="hero-subrow">
+            <span class="hero-status-badge is-good" id="heroStatusBadge">
+              <span class="hero-status-dot" aria-hidden="true"></span>
+              All systems clear
+            </span>
+          </div>
+        </div>
+      </div>
+      <div class="hero-right">
+        <div class="hero-meta-row">
+          <span class="hero-meta-icon" aria-hidden="true">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M12 7v5l3.5 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </span>
+          <div>
+            <div class="hero-meta-label">Last updated</div>
+             <span class="hero-meta-value" id="tzClock">&ndash;</span>
+             <select id="tzSelect" class="tz-select" aria-label="Select timezone"></select>
+            <!-- <div class="hero-meta-value" id="heroLastUpdated">&ndash;</div> -->
+          </div>
+        </div>
+        <div class="hero-meta-row">
+          <span class="hero-meta-icon" aria-hidden="true">
+            <span class="hero-live-dot"></span>
+          </span>
+          <div>
+            <div class="hero-meta-label">Auto-refresh</div>
+            <div class="hero-meta-value">Every minute</div>
+          </div>
+        </div>
+        <!-- <div class="hero-meta-row">
+          <span class="hero-meta-icon" aria-hidden="true">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M3 12h18M12 3c2.5 2.5 3.8 5.7 3.8 9s-1.3 6.5-3.8 9c-2.5-2.5-3.8-5.7-3.8-9S9.5 5.5 12 3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+          </span>
+          <div>
+            <div class="hero-meta-label">World clock</div>
+            <div class="hero-meta-tz-row">
+              <select id="tzSelect" class="tz-select" aria-label="Select timezone"></select>
+              <span class="hero-meta-value" id="tzClock">&ndash;</span>
+            </div>
+          </div>
+        </div> -->
+      </div>
+      <div id="greenTracker" class="green-tracker" aria-label="Zero-open-ticket time tracker">
+        <div class="green-tracker-hd">
+          <span class="green-tracker-dot" id="greenTrackerDot" aria-hidden="true"></span>
+          <span class="green-tracker-title">Zero-Ticket Time</span>
+        </div>
+        <div class="green-tracker-row">
+          <span class="green-tracker-label">Current streak</span>
+          <span class="green-tracker-value" id="greenStreakValue">&ndash;</span>
+        </div>
+        <div class="green-tracker-row">
+          <span class="green-tracker-label">Last 12 hrs</span>
+          <span class="green-tracker-value" id="green12hValue">&ndash;</span>
+        </div>
+        <div class="green-tracker-row">
+          <span class="green-tracker-label">Last 7 days</span>
+          <span class="green-tracker-value" id="green7dValue">&ndash;</span>
+        </div>
+        <div class="green-tracker-note">Zero-ticket time is live since 1 Oct</div>
+      </div>
+    </section>
+
+    <!-- Ticket cards -->
+    <section class="ticket-grid" aria-label="Ticket counts by service">
+      <article class="tcard" data-tile="aa">
+        <div class="tcard-top">
+          <span class="tcard-icon" aria-hidden="true">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+              <path d="M3 8.5A2.5 2.5 0 0 1 5.5 6h13A2.5 2.5 0 0 1 21 8.5V10a2 2 0 0 0 0 4v1.5a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 15.5V14a2 2 0 0 0 0-4z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+              <path d="M9.5 6.5v11" stroke="currentColor" stroke-width="1.6" stroke-dasharray="2 2"/>
+            </svg>
+          </span>
+          <h3 class="tcard-label">AA Tickets</h3>
+          <span class="tcard-status-badge is-good" id="badge-aa">All clear</span>
+        </div>
+        <div class="tcard-main">
+          <div class="ring ring--card" id="ring-aa" style="--pct: 0; --ring-color: var(--accent-aa);">
+            <div class="ring-center">
+              <span class="tcard-value is-loading" id="card-aa-value">&ndash;</span>
+            </div>
+          </div>
+          <div class="tcard-stats">
+            <div class="tcard-stat">
+              <span class="tcard-stat-label">Share of total</span>
+              <span class="tcard-stat-value" id="share-aa">&mdash;</span>
+            </div>
+          </div>
+        </div>
+        <div class="tcard-footer">
+          <span class="tcard-updated" id="updated-aa">Updated &ndash;</span>
+          <a id="tile-aa-report" class="tcard-report-link" href="#" target="_blank" rel="noopener noreferrer" hidden>Report <span aria-hidden="true">&#8599;</span></a>
+        </div>
+      </article>
+
+      <article class="tcard" data-tile="ae">
+        <div class="tcard-top">
+          <span class="tcard-icon" aria-hidden="true">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+              <path d="M3 8.5A2.5 2.5 0 0 1 5.5 6h13A2.5 2.5 0 0 1 21 8.5V10a2 2 0 0 0 0 4v1.5a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 15.5V14a2 2 0 0 0 0-4z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+              <path d="M9.5 6.5v11" stroke="currentColor" stroke-width="1.6" stroke-dasharray="2 2"/>
+            </svg>
+          </span>
+          <h3 class="tcard-label">AE Tickets</h3>
+          <span class="tcard-status-badge is-good" id="badge-ae">All clear</span>
+        </div>
+        <div class="tcard-main">
+          <div class="ring ring--card" id="ring-ae" style="--pct: 0; --ring-color: var(--accent-ae);">
+            <div class="ring-center">
+              <span class="tcard-value is-loading" id="card-ae-value">&ndash;</span>
+            </div>
+          </div>
+          <div class="tcard-stats">
+            <div class="tcard-stat">
+              <span class="tcard-stat-label">Share of total</span>
+              <span class="tcard-stat-value" id="share-ae">&mdash;</span>
+            </div>
+          </div>
+        </div>
+        <div class="tcard-footer">
+          <span class="tcard-updated" id="updated-ae">Updated &ndash;</span>
+          <a id="tile-ae-report" class="tcard-report-link" href="#" target="_blank" rel="noopener noreferrer" hidden>Report <span aria-hidden="true">&#8599;</span></a>
+        </div>
+      </article>
+
+      <article class="tcard" data-tile="gstore">
+        <div class="tcard-top">
+          <span class="tcard-icon" aria-hidden="true">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+              <path d="M3 8.5A2.5 2.5 0 0 1 5.5 6h13A2.5 2.5 0 0 1 21 8.5V10a2 2 0 0 0 0 4v1.5a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 15.5V14a2 2 0 0 0 0-4z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+              <path d="M9.5 6.5v11" stroke="currentColor" stroke-width="1.6" stroke-dasharray="2 2"/>
+            </svg>
+          </span>
+          <h3 class="tcard-label">gStore Tickets</h3>
+          <span class="tcard-status-badge is-good" id="badge-gstore">All clear</span>
+        </div>
+        <div class="tcard-main">
+          <div class="ring ring--card" id="ring-gstore" style="--pct: 0; --ring-color: var(--accent-gstore);">
+            <div class="ring-center">
+              <span class="tcard-value is-loading" id="card-gstore-value">&ndash;</span>
+            </div>
+          </div>
+          <div class="tcard-stats">
+            <div class="tcard-stat">
+              <span class="tcard-stat-label">Share of total</span>
+              <span class="tcard-stat-value" id="share-gstore">&mdash;</span>
+            </div>
+          </div>
+        </div>
+        <div class="tcard-footer">
+          <span class="tcard-updated" id="updated-gstore">Updated &ndash;</span>
+          <a id="tile-gstore-report" class="tcard-report-link" href="#" target="_blank" rel="noopener noreferrer" hidden>Report <span aria-hidden="true">&#8599;</span></a>
+        </div>
+      </article>
+    </section>
+
+    <!-- IM Bridge -->
+    <section class="cases-section" aria-label="IM Bridge cases">
+      <div class="cases-header">
+        <span class="cases-icon" aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <rect x="3" y="7.5" width="18" height="12" rx="2" stroke="currentColor" stroke-width="1.6"/>
+            <path d="M8.5 7.5V6a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v1.5" stroke="currentColor" stroke-width="1.6"/>
+          </svg>
+        </span>
+        <h2>Ticket Details</h2>
+        <span id="casesCount" class="cases-count"></span>
+      </div>
+      <div class="table-scroll">
+        <table id="casesTable">
+          <thead id="casesHead">
+            <tr class="skeleton-row" aria-hidden="true">
+              <th><span class="skeleton-cell-bar skeleton-shimmer" style="width:60px"></span></th>
+              <th><span class="skeleton-cell-bar skeleton-shimmer" style="width:90px"></span></th>
+              <th><span class="skeleton-cell-bar skeleton-shimmer" style="width:110px"></span></th>
+              <th><span class="skeleton-cell-bar skeleton-shimmer" style="width:70px"></span></th>
+              <th><span class="skeleton-cell-bar skeleton-shimmer" style="width:70px"></span></th>
+              <th><span class="skeleton-cell-bar skeleton-shimmer" style="width:60px"></span></th>
+            </tr>
+          </thead>
+          <tbody id="casesBody">
+            <tr class="skeleton-row" aria-hidden="true">
+              <td><span class="skeleton-cell-bar skeleton-shimmer" style="width:64px"></span></td>
+              <td><span class="skeleton-cell-bar skeleton-shimmer" style="width:100px"></span></td>
+              <td><span class="skeleton-cell-bar skeleton-shimmer" style="width:150px"></span></td>
+              <td><span class="skeleton-cell-bar skeleton-shimmer" style="width:80px"></span></td>
+              <td><span class="skeleton-cell-bar skeleton-shimmer" style="width:70px"></span></td>
+              <td><span class="skeleton-cell-bar skeleton-shimmer" style="width:50px"></span></td>
+            </tr>
+            <tr class="skeleton-row" aria-hidden="true">
+              <td><span class="skeleton-cell-bar skeleton-shimmer" style="width:64px"></span></td>
+              <td><span class="skeleton-cell-bar skeleton-shimmer" style="width:100px"></span></td>
+              <td><span class="skeleton-cell-bar skeleton-shimmer" style="width:150px"></span></td>
+              <td><span class="skeleton-cell-bar skeleton-shimmer" style="width:80px"></span></td>
+              <td><span class="skeleton-cell-bar skeleton-shimmer" style="width:70px"></span></td>
+              <td><span class="skeleton-cell-bar skeleton-shimmer" style="width:50px"></span></td>
+            </tr>
+            <tr class="skeleton-row" aria-hidden="true">
+              <td><span class="skeleton-cell-bar skeleton-shimmer" style="width:64px"></span></td>
+              <td><span class="skeleton-cell-bar skeleton-shimmer" style="width:100px"></span></td>
+              <td><span class="skeleton-cell-bar skeleton-shimmer" style="width:150px"></span></td>
+              <td><span class="skeleton-cell-bar skeleton-shimmer" style="width:80px"></span></td>
+              <td><span class="skeleton-cell-bar skeleton-shimmer" style="width:70px"></span></td>
+              <td><span class="skeleton-cell-bar skeleton-shimmer" style="width:50px"></span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div id="casesEmpty" class="cases-empty" hidden>
+        <span class="cases-empty-icon" aria-hidden="true">
+          <span class="cases-empty-pulse"></span>
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9.5" stroke="currentColor" stroke-width="1.6"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <p class="cases-empty-headline">No Active IM Bridge Cases</p>
+        <p class="cases-empty-sub">Everything is operating normally.</p>
+      </div>
+    </section>
+
+    <!-- Critical Trend -->
+    <section class="trend-section">
+      <div class="trend-section-hd">
+        <h2 class="trend-section-title">Critical Trend</h2>
+        <p class="trend-section-sub">Sev 1 &amp; 2 &middot; Impact &geq;50% &middot; Incidents only</p>
+      </div>
+      <div class="trend-card">
+        <div class="trend-range-bar">
+          <button class="trange-btn active" data-range="7d">7D</button>
+          <button class="trange-btn" data-range="1m">1M</button>
+          <button class="trange-btn" data-range="6m">6M</button>
+        </div>
+        <div class="trend-chart-wrap" id="trendWrap">
+          <svg id="trendChart" class="trend-svg"></svg>
+          <div class="trend-overlay-loader" id="trendLoading">Loading&hellip;</div>
+          <div class="trend-overlay-msg" id="trendEmpty" hidden>No data for this period</div>
+          <div class="trend-tooltip" id="trendTooltip" hidden></div>
+        </div>
+        <div class="trend-legend">
+          <div class="trend-leg-item">
+            <div class="trend-leg-line" style="--lc:#3b82f6"></div>AA
+          </div>
+          <div class="trend-leg-item">
+            <div class="trend-leg-line" style="--lc:#f97316"></div>AE
+          </div>
+          <div class="trend-leg-item">
+            <div class="trend-leg-line" style="--lc:#8b5cf6"></div>gStore
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7 Day History of Tickets -->
+    <section class="cases-section" aria-label="3 day ticket history">
+      <div class="cases-header">
+        <span class="cases-icon" aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.6"/>
+            <path d="M12 7.5V12l3 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+        <h2>3 Day History of Tickets</h2>
+        <span id="historyCount" class="cases-count"></span>
+      </div>
+      <div class="table-scroll">
+        <table id="historyTable">
+          <thead>
+            <tr>
+              <th>Created</th>
+              <th>Case</th>
+              <th>Account</th>
+              <th>Subject</th>
+              <th>Service</th>
+              <th>Severity</th>
+              <th>Impact</th>
+              <th>Resolution Time</th>
+            </tr>
+          </thead>
+          <tbody id="historyBody">
+            <tr class="skeleton-row" aria-hidden="true">
+              <td><span class="skeleton-cell-bar skeleton-shimmer" style="width:90px"></span></td>
+              <td><span class="skeleton-cell-bar skeleton-shimmer" style="width:70px"></span></td>
+              <td><span class="skeleton-cell-bar skeleton-shimmer" style="width:110px"></span></td>
+              <td><span class="skeleton-cell-bar skeleton-shimmer" style="width:140px"></span></td>
+              <td><span class="skeleton-cell-bar skeleton-shimmer" style="width:60px"></span></td>
+              <td><span class="skeleton-cell-bar skeleton-shimmer" style="width:60px"></span></td>
+              <td><span class="skeleton-cell-bar skeleton-shimmer" style="width:50px"></span></td>
+              <td><span class="skeleton-cell-bar skeleton-shimmer" style="width:80px"></span></td>
+            </tr>
+            <tr class="skeleton-row" aria-hidden="true">
+              <td><span class="skeleton-cell-bar skeleton-shimmer" style="width:90px"></span></td>
+              <td><span class="skeleton-cell-bar skeleton-shimmer" style="width:70px"></span></td>
+              <td><span class="skeleton-cell-bar skeleton-shimmer" style="width:110px"></span></td>
+              <td><span class="skeleton-cell-bar skeleton-shimmer" style="width:140px"></span></td>
+              <td><span class="skeleton-cell-bar skeleton-shimmer" style="width:60px"></span></td>
+              <td><span class="skeleton-cell-bar skeleton-shimmer" style="width:60px"></span></td>
+              <td><span class="skeleton-cell-bar skeleton-shimmer" style="width:50px"></span></td>
+              <td><span class="skeleton-cell-bar skeleton-shimmer" style="width:80px"></span></td>
+            </tr>
+            <tr class="skeleton-row" aria-hidden="true">
+              <td><span class="skeleton-cell-bar skeleton-shimmer" style="width:90px"></span></td>
+              <td><span class="skeleton-cell-bar skeleton-shimmer" style="width:70px"></span></td>
+              <td><span class="skeleton-cell-bar skeleton-shimmer" style="width:110px"></span></td>
+              <td><span class="skeleton-cell-bar skeleton-shimmer" style="width:140px"></span></td>
+              <td><span class="skeleton-cell-bar skeleton-shimmer" style="width:60px"></span></td>
+              <td><span class="skeleton-cell-bar skeleton-shimmer" style="width:60px"></span></td>
+              <td><span class="skeleton-cell-bar skeleton-shimmer" style="width:50px"></span></td>
+              <td><span class="skeleton-cell-bar skeleton-shimmer" style="width:80px"></span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div id="historyEmpty" class="cases-empty" hidden>
+        <p class="cases-empty-headline">No Tickets in the Last 3 Days</p>
+        <p class="cases-empty-sub">Nothing matching Sev 1/2 &amp; Impact &geq;50% in this window.</p>
+      </div>
+    </section>
+  </main>
+
+  <div id="trendDetailModal" class="trend-modal" hidden>
+    <div class="trend-modal-backdrop" id="trendModalBackdrop"></div>
+    <div class="trend-modal-panel">
+      <div class="trend-modal-hd">
+        <h3 id="trendModalTitle">Cases</h3>
+        <button class="trend-modal-close" id="trendModalClose" aria-label="Close">&times;</button>
+      </div>
+      <div class="trend-modal-body" id="trendModalBody"></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
