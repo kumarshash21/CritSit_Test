@@ -45,6 +45,26 @@ const CATEGORY_TYPE_MAP = {
   'service-request': 'Service Request',
 };
 
+// POD-4 (Zenith) isn't a list of sites in Pod_list.xlsx like the other pods —
+// it's defined by product type: every site, but every product EXCEPT these.
+const ZENITH_POD = 'POD-4 (Zenith)';
+const ZENITH_EXCLUDED_PRODUCT_SLUGS = ['ttp', 'rtp', 'shuttle', 'relay'];
+const NO_PRODUCT_MATCH = '__no_product_match__';
+
+// Applies the Zenith pod to a request's pod/product selection. Zenith alone
+// drops the site restriction and removes its excluded products (from any
+// product chips the user picked, or from all products if none were picked). Combined with other pods it
+// adds nothing — a product-scoped pod can't be unioned with site-scoped pods
+// in a single sites x products query — so only the site pods apply.
+function applyZenithPod(pods, productSlugs) {
+  if (!pods.includes(ZENITH_POD)) return { pods, productSlugs, noProductMatch: false };
+  const otherPods = pods.filter((p) => p !== ZENITH_POD);
+  if (otherPods.length) return { pods: otherPods, productSlugs, noProductMatch: false };
+  const candidates = productSlugs.length ? productSlugs : Object.keys(PRODUCT_TYPE_MAP);
+  const slugs = candidates.filter((s) => !ZENITH_EXCLUDED_PRODUCT_SLUGS.includes(s));
+  return { pods: [], productSlugs: slugs, noProductMatch: slugs.length === 0 };
+}
+
 function mapValues(slugs, map, key) {
   return slugs.map((s) => (key ? map[s]?.[key] : map[s])).filter(Boolean);
 }
@@ -290,7 +310,7 @@ app.get('/api/trend/history', async (req, res) => {
 app.get('/api/pods', async (req, res) => {
   try {
     const podMap = await getPodMap();
-    res.json({ pods: Object.keys(podMap).sort() });
+    res.json({ pods: [...Object.keys(podMap), ZENITH_POD].sort() });
   } catch (err) {
     console.error(err);
     res.status(502).json({ error: err.message });
@@ -315,13 +335,16 @@ app.get('/api/software-stability', async (req, res) => {
       return res.status(400).json({ error: 'year must be an integer >= 2024' });
     }
     const severities = toArray(req.query.severity);
-    const pods = toArray(req.query.pod);
+    const zenith = applyZenithPod(toArray(req.query.pod), toArray(req.query.product));
+    const pods = zenith.pods;
     const categorySlugs = toArray(req.query.category);
-    const productSlugs = toArray(req.query.product);
+    const productSlugs = zenith.productSlugs;
     // Undefined (vs. an empty array) is what tells computeTeoKpis/getTeoCases
     // to fall back to the documented default scope — see PRODUCT_TYPE_MAP.
     const types = categorySlugs.length ? mapValues(categorySlugs, CATEGORY_TYPE_MAP) : undefined;
-    const products = productSlugs.length ? mapValues(productSlugs, PRODUCT_TYPE_MAP, 'sf') : undefined;
+    const products = zenith.noProductMatch
+      ? [NO_PRODUCT_MATCH]
+      : productSlugs.length ? mapValues(productSlugs, PRODUCT_TYPE_MAP, 'sf') : undefined;
     const site = typeof req.query.site === 'string' ? req.query.site : '';
     const data = await computeTeoKpis({ month, year, week, severities, pods, types, products, site });
     res.json(data);
@@ -352,8 +375,11 @@ async function uptimeMtbfParams(req) {
   const year = req.query.year ? Number(req.query.year) : undefined;
   const week = req.query.week ? Number(req.query.week) : undefined;
   const explicitSites = toArray(req.query.site);
-  const pods = toArray(req.query.pod);
-  const products = mapValues(toArray(req.query.product), PRODUCT_TYPE_MAP, 'bq');
+  const zenith = applyZenithPod(toArray(req.query.pod), toArray(req.query.product));
+  const pods = zenith.pods;
+  const products = zenith.noProductMatch
+    ? [NO_PRODUCT_MATCH]
+    : mapValues(zenith.productSlugs, PRODUCT_TYPE_MAP, 'bq');
 
   let sites = explicitSites;
   if (pods.length) {
@@ -376,8 +402,11 @@ async function ticketParams(req) {
   const year = req.query.year ? Number(req.query.year) : undefined;
   const week = req.query.week ? Number(req.query.week) : undefined;
   const explicitSites = toArray(req.query.site);
-  const pods = toArray(req.query.pod);
-  const products = mapValues(toArray(req.query.product), PRODUCT_TYPE_MAP, 'sf');
+  const zenith = applyZenithPod(toArray(req.query.pod), toArray(req.query.product));
+  const pods = zenith.pods;
+  const products = zenith.noProductMatch
+    ? [NO_PRODUCT_MATCH]
+    : mapValues(zenith.productSlugs, PRODUCT_TYPE_MAP, 'sf');
 
   let sites = explicitSites;
   if (pods.length) {

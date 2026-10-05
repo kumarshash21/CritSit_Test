@@ -593,11 +593,12 @@
         const json = await res.json();
         if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
 
-        const weekOptions = (json.weeks || []).map((w) => {
-          const label = `${w.year} · Week ${w.week} (${w.start} – ${w.end})`;
-          return `<option value="${w.year}-${w.week}">${escapeHtml(label)}</option>`;
+        // Completed weeks only, newest first; the first (last week) is the default.
+        const weekOptions = (json.weeks || []).map((w, i) => {
+          const label = `${w.year} · Week ${w.week} (${w.start} – ${w.end})${i === 0 ? ' · Last week' : ''}`;
+          return `<option value="${i === 0 ? '' : `${w.year}-${w.week}`}">${escapeHtml(label)}</option>`;
         });
-        weekSel.innerHTML = `<option value="">Latest week</option>${weekOptions.join('')}`;
+        weekSel.innerHTML = weekOptions.length ? weekOptions.join('') : '<option value="">Last week</option>';
 
         // gStore sites are a different product line from the Software
         // incidents this page tracks, so they're dropped from the Site
