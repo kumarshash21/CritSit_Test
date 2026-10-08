@@ -826,7 +826,7 @@ async function computeResolutionHealth({
   if (products.length) clauses.push(`Product_Type__c IN (${products.map(soqlString).join(',')})`);
 
   const soql =
-    `SELECT CaseNumber, CreatedDate, ClosedDate, Highest_Severity__c, Account_Name__c FROM Case WHERE ${clauses.join(' AND ')}`;
+    `SELECT CaseNumber, CreatedDate, ClosedDate, Incident_Start_time__c, End_Time_of_Incident__c, Highest_Severity__c, Account_Name__c FROM Case WHERE ${clauses.join(' AND ')}`;
 
   let records = [];
   let nextPath = `/services/data/${SF_API_VERSION}/query?q=${encodeURIComponent(soql)}`;
@@ -841,10 +841,19 @@ async function computeResolutionHealth({
       caseNumber: r.CaseNumber,
       createdMs: Date.parse(r.CreatedDate),
       closedMs: Date.parse(r.ClosedDate),
+      // Ticket's "Time Details" section: Start time / End Time. Resolution
+      // time (and so SLA + MTTR) is measured between these; the case's
+      // Created/Closed dates are only a fallback when either is unset.
+      startMs: Date.parse(r.Incident_Start_time__c),
+      endMs: Date.parse(r.End_Time_of_Incident__c),
       severity: r.Highest_Severity__c,
       site: r.Account_Name__c,
     }))
-    .filter((r) => Number.isFinite(r.createdMs) && Number.isFinite(r.closedMs));
+    .filter((r) => Number.isFinite(r.createdMs) && Number.isFinite(r.closedMs))
+    .map((r) => {
+      const hasTimeDetails = Number.isFinite(r.startMs) && Number.isFinite(r.endMs) && r.endMs >= r.startMs;
+      return { ...r, resStartMs: hasTimeDetails ? r.startMs : r.createdMs, resEndMs: hasTimeDetails ? r.endMs : r.closedMs };
+    });
 
   const weekList = [];
   for (let i = weeks - 1; i >= 0; i -= 1) {
@@ -869,7 +878,7 @@ async function computeResolutionHealth({
   // "This week" slice for the SLA Adherence % / MTTR (Hours) tiles.
   const thisWeekKey = weekKey(anchorWeek);
   const thisWeekRecords = parsed.filter((r) => weekKey(isoWeekOf(istDayKey(r.closedMs))) === thisWeekKey);
-  const hoursOf = (r) => (r.closedMs - r.createdMs) / 3600000;
+  const hoursOf = (r) => (r.resEndMs - r.resStartMs) / 3600000;
 
   const mttrHours = thisWeekRecords.length
     ? thisWeekRecords.reduce((sum, r) => sum + hoursOf(r), 0) / thisWeekRecords.length
@@ -886,8 +895,8 @@ async function computeResolutionHealth({
       caseNumber: r.caseNumber,
       site: r.site,
       severity: r.severity,
-      createdAt: new Date(r.createdMs).toISOString(),
-      closedAt: new Date(r.closedMs).toISOString(),
+      createdAt: new Date(r.resStartMs).toISOString(),
+      closedAt: new Date(r.resEndMs).toISOString(),
       resolutionHours: hoursOf(r),
       withinSla: withinSla(r.severity, hoursOf(r) * 60),
     }))

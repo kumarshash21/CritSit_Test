@@ -56,7 +56,8 @@
         <div class="filter-group-label">Select Week</div>
         <div class="filter-group-body">
           <select id="filterWeek" class="filter-select">
-            <option value="">Latest week</option>
+            <option value="">Last week</option>
+            <option value="none">None</option>
           </select>
         </div>
       </div>
@@ -121,7 +122,7 @@
     <section class="uptime-section" aria-label="Software uptime data">
       <div class="uptime-header">
         <h2 class="uptime-title">Software Uptime Data</h2>
-        <p class="uptime-sub">Site-level uptime status for the selected week &middot; &gt;99.8% flags green, &gt;99.4&ndash;99.8% flags yellow, &le;99.4% flags red</p>
+        <p class="uptime-sub">Site-level uptime status for the selected week or month &middot; &gt;99.8% flags green, &gt;99.4&ndash;99.8% flags yellow, &le;99.4% flags red</p>
       </div>
 
       <div class="uptime-body">
@@ -177,7 +178,7 @@
     <section class="mtbf-section" aria-label="MTBF site distribution">
       <div class="mtbf-header">
         <h2 class="mtbf-title">MTBF: Site Distribution</h2>
-        <p class="mtbf-sub">Site-level mean time between failures for the selected week &middot; lower MTBF flags red, mid-range flags yellow, higher flags green</p>
+        <p class="mtbf-sub">Site-level mean time between failures for the selected week or month &middot; lower MTBF flags red, mid-range flags yellow, higher flags green</p>
       </div>
 
       <div class="mtbf-body">
@@ -531,7 +532,9 @@
         });
         const weekSel = document.getElementById('filterWeek');
         const siteSel = document.getElementById('filterSite');
+        const monthSelClr = document.getElementById('filterMonth');
         if (weekSel) weekSel.value = '';
+        if (monthSelClr) monthSelClr.value = '';
         if (siteSel) siteSel.value = '';
         updateSummary();
         loadKpiData();
@@ -1178,6 +1181,23 @@
     // affect these BigQuery-backed sections, so they don't trigger this). ----
     let stabilityRequestId = 0;
 
+    // Select Week and KPI Month are mutually exclusive: choosing one resets
+    // the other to "None". Week '' = last week (default), 'none' = not in use;
+    // Month '' = not in use. Adds the active period to `params`.
+    function applyPeriodParams(params) {
+      const weekVal = (document.getElementById('filterWeek') || {}).value || '';
+      const monthVal = (document.getElementById('filterMonth') || {}).value || '';
+      if (monthVal) {
+        const [y, m] = monthVal.split('-');
+        params.set('year', y);
+        params.set('month', m);
+      } else if (weekVal && weekVal !== 'none') {
+        const [y, w] = weekVal.split('-');
+        params.set('year', y);
+        params.set('week', w);
+      }
+    }
+
     function skeletonRows(rowClass, count) {
       return Array.from({ length: count }).map(() => `
         <li class="${rowClass}" aria-hidden="true">
@@ -1216,12 +1236,7 @@
       setStabilityLoadingState(true);
 
       const params = new URLSearchParams();
-      const weekSel = document.getElementById('filterWeek');
-      if (weekSel && weekSel.value) {
-        const [y, w] = weekSel.value.split('-');
-        params.set('year', y);
-        params.set('week', w);
-      }
+      applyPeriodParams(params);
       const siteSel = document.getElementById('filterSite');
       if (siteSel && siteSel.value) params.set('site', siteSel.value);
       getSelectedPods().forEach((p) => params.append('pod', p));
@@ -1267,7 +1282,16 @@
           const label = `${w.year} · Week ${w.week} (${w.start} – ${w.end})${i === 0 ? ' · Last week' : ''}`;
           return `<option value="${i === 0 ? '' : `${w.year}-${w.week}`}">${escapeHtml(label)}</option>`;
         });
-        weekSel.innerHTML = weekOptions.length ? weekOptions.join('') : '<option value="">Last week</option>';
+        // "None" sits right under "Last week" so it's reachable without scrolling the long week list.
+        const extraOptions = [];
+        if (json.currentWeek) {
+          const c = json.currentWeek;
+          const label = `${c.year} · Week ${c.week} (${c.start} – ${c.end}) · Current week`;
+          extraOptions.push(`<option value="${c.year}-${c.week}">${escapeHtml(label)}</option>`);
+        }
+        extraOptions.push('<option value="none">None</option>');
+        weekOptions.splice(1, 0, ...extraOptions);
+        weekSel.innerHTML = weekOptions.length > 1 ? weekOptions.join('') : '<option value="">Last week</option><option value="none">None</option>';
 
         const siteOptions = (json.sites || []).map((s) => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`);
         siteSel.innerHTML = `<option value="">All</option>${siteOptions.join('')}`;
@@ -1277,6 +1301,12 @@
     }
 
     document.getElementById('filterWeek').addEventListener('change', () => {
+      // Picking a week clears the month filter.
+      const monthSel = document.getElementById('filterMonth');
+      const weekSelEl = document.getElementById('filterWeek');
+      if (monthSel && weekSelEl.value !== 'none') monthSel.value = '';
+      // Week = None with no month chosen would leave no period; revert to last week.
+      if (weekSelEl.value === 'none' && monthSel && !monthSel.value) weekSelEl.value = '';
       loadUptimeAndMtbf();
       loadKpiData();
     });
@@ -1440,7 +1470,7 @@
       const sel = document.getElementById('filterMonth');
       if (!sel) return;
       const now = new Date();
-      const options = [];
+      const options = ['<option value="">None</option>'];
       for (let i = 0; i < 12; i++) {
         const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
         const year = d.getFullYear();
@@ -1449,7 +1479,14 @@
         options.push(`<option value="${year}-${month}">${label}</option>`);
       }
       sel.innerHTML = options.join('');
-      sel.addEventListener('change', loadKpiData);
+      sel.value = ''; // default: Month = None, Week = Last week
+      sel.addEventListener('change', () => {
+        // Picking a month clears the week filter; clearing the month falls back to last week.
+        const weekSel = document.getElementById('filterWeek');
+        if (weekSel) weekSel.value = sel.value ? 'none' : '';
+        loadKpiData();
+        loadUptimeAndMtbf();
+      });
     }
 
     let kpiRequestId = 0;
@@ -1501,20 +1538,9 @@
       pods.forEach((p) => params.append('pod', p));
       products.forEach((p) => params.append('product', p));
 
-      // Select Week (when set) takes priority over KPI Month — it scopes the
-      // KPI cards and Bucket Counts to the exact same week the Uptime/MTBF
-      // panels are showing, instead of the calendar month.
-      const weekSel = document.getElementById('filterWeek');
-      const monthSel = document.getElementById('filterMonth');
-      if (weekSel && weekSel.value) {
-        const [y, w] = weekSel.value.split('-');
-        params.set('year', y);
-        params.set('week', w);
-      } else if (monthSel && monthSel.value) {
-        const [y, m] = monthSel.value.split('-');
-        params.set('year', y);
-        params.set('month', m);
-      }
+      // Week and Month are mutually exclusive; whichever is active scopes
+      // the KPI cards, Bucket Counts, Uptime and MTBF to the same period.
+      applyPeriodParams(params);
 
       const siteSel = document.getElementById('filterSite');
       if (siteSel && siteSel.value) params.set('site', siteSel.value);

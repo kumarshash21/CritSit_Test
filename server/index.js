@@ -374,6 +374,7 @@ async function resolvePodSites(pods) {
 async function uptimeMtbfParams(req) {
   const year = req.query.year ? Number(req.query.year) : undefined;
   const week = req.query.week ? Number(req.query.week) : undefined;
+  const month = req.query.month ? Number(req.query.month) : undefined;
   const explicitSites = toArray(req.query.site);
   const zenith = applyZenithPod(toArray(req.query.pod), toArray(req.query.product));
   const pods = zenith.pods;
@@ -389,7 +390,7 @@ async function uptimeMtbfParams(req) {
       : podSites;
     if (!sites.length) sites = ['__no_site_match__'];
   }
-  return { year, week, sites, products };
+  return { year, week, month, sites, products };
 }
 
 // Ticket Inflow/Backlog Health read from zendesk_recent_standard_v1, whose

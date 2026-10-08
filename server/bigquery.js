@@ -101,14 +101,37 @@ async function resolveWeekAnchor(table, year, week, { completedOnly = false } = 
   return rows[0];
 }
 
+// When a KPI Month is selected (year + month, no week), the Uptime/MTBF
+// sections cover every week the month owns (see getMonthWeekRange) instead
+// of a single week. Returns null when no month was requested or BigQuery has
+// no weeks for it yet.
+async function resolveMonthRange(year, month) {
+  if (!(year && month)) return null;
+  return getMonthWeekRange({ year, month });
+}
+
+// Trend-chart week window: the selected month's weeks, or the 6 weeks up to
+// and including the selected week.
+function trendWeeksSubquery(table, monthRange) {
+  return monthRange
+    ? `SELECT DISTINCT Week_Start_Date FROM ${table}
+       WHERE Week_Start_Date BETWEEN @monthStart AND @monthEnd`
+    : `SELECT DISTINCT Week_Start_Date FROM ${table}
+       WHERE Week_Start_Date <= @weekStart
+       ORDER BY Week_Start_Date DESC LIMIT 6`;
+}
+
 // year/week select which week's snapshot to show (defaults to the latest
 // available week); sites/products narrow both the snapshot and the 6-week
 // trend down to the selected Site/Product-Type filter chips.
-export async function getUptimeData({ year, week, sites = [], products = [] } = {}) {
-  const anchor = await resolveWeekAnchor(UPTIME_TABLE, year, week, { completedOnly: !(year && week) });
-  if (!anchor) return { snapshot: [], weekly: [], selectedWeek: null };
-  const weekStart = anchor.Week_Start_Date.value;
-  const weekEnd = anchor.Week_End_Date.value;
+export async function getUptimeData({ year, week, month, sites = [], products = [] } = {}) {
+  const monthRange = week ? null : await resolveMonthRange(year, month);
+  if (month && !week && !monthRange) return { snapshot: [], weekly: [], selectedWeek: null };
+  const anchor = monthRange ? null : await resolveWeekAnchor(UPTIME_TABLE, year, week, { completedOnly: !(year && week) });
+  if (!monthRange && !anchor) return { snapshot: [], weekly: [], selectedWeek: null };
+  const weekStart = monthRange ? monthRange.start : anchor.Week_Start_Date.value;
+  const weekEnd = monthRange ? monthRange.end : anchor.Week_End_Date.value;
+  const monthParams = monthRange ? { monthStart: monthRange.start, monthEnd: monthRange.end } : {};
   const { where, params } = siteProductFilter(sites, products);
 
   const snapshotRows = await runQuery(`
@@ -141,12 +164,10 @@ export async function getUptimeData({ year, week, sites = [], products = [] } = 
       COUNT(DISTINCT Product) AS num_products
     FROM ${UPTIME_TABLE}
     WHERE Week_Start_Date IN (
-      SELECT DISTINCT Week_Start_Date FROM ${UPTIME_TABLE}
-      WHERE Week_Start_Date <= @weekStart
-      ORDER BY Week_Start_Date DESC LIMIT 6
+      ${trendWeeksSubquery(UPTIME_TABLE, monthRange)}
     ) ${where}
     GROUP BY Week_Start_Date, Site
-  `, { weekStart, ...params });
+  `, { weekStart, ...monthParams, ...params });
   const byWeek = new Map();
   for (const r of weeklyRows) {
     const pct = uptimePct(Number(r.ops_hr), Number(r.downtime_hr), Number(r.num_products));
@@ -163,16 +184,26 @@ export async function getUptimeData({ year, week, sites = [], products = [] } = 
       return { week, uptimePct: uptimePctAvg, ...bucketPercentages(pcts, classifyUptime) };
     });
 
-  return { snapshot, weekly, selectedWeek: { year: anchor.year, week: anchor.week, start: weekStart, end: weekEnd } };
+  return {
+    snapshot,
+    weekly,
+    selectedWeek: monthRange
+      ? { year, month, start: weekStart, end: weekEnd }
+      : { year: anchor.year, week: anchor.week, start: weekStart, end: weekEnd },
+  };
 }
 
-export async function getMtbfData({ year, week, sites = [], products = [] } = {}) {
+export async function getMtbfData({ year, week, month, sites = [], products = [] } = {}) {
   // With no explicit week requested, fall back to the latest *completed*
   // week (excludes the current in-progress week) — matches the original
   // default behavior. An explicit year/week is honored even if in progress.
-  const anchor = await resolveWeekAnchor(MTBF_TABLE, year, week, { completedOnly: !(year && week) });
-  if (!anchor) return { snapshot: [], overall: 0, weekly: [], selectedWeek: null };
-  const weekStart = anchor.Week_Start_Date.value;
+  const monthRange = week ? null : await resolveMonthRange(year, month);
+  if (month && !week && !monthRange) return { snapshot: [], overall: 0, weekly: [], selectedWeek: null };
+  const anchor = monthRange ? null : await resolveWeekAnchor(MTBF_TABLE, year, week, { completedOnly: !(year && week) });
+  if (!monthRange && !anchor) return { snapshot: [], overall: 0, weekly: [], selectedWeek: null };
+  const weekStart = monthRange ? monthRange.start : anchor.Week_Start_Date.value;
+  const lastWeekStart = monthRange ? monthRange.end : weekStart; // Week_Start_Date upper bound for the snapshot
+  const monthParams = monthRange ? { monthStart: monthRange.start, monthEnd: monthRange.end } : {};
   const { where, params } = siteProductFilter(sites, products);
 
   const snapshotRows = await runQuery(`
@@ -183,9 +214,9 @@ export async function getMtbfData({ year, week, sites = [], products = [] } = {}
       SUM(SW_Sev1_2_3_Count) AS sev_count,
       COUNT(DISTINCT Product) AS num_products
     FROM ${MTBF_TABLE}
-    WHERE Week_Start_Date = @weekStart ${where}
+    WHERE Week_Start_Date BETWEEN @weekStart AND @lastWeekStart ${where}
     GROUP BY Site
-  `, { weekStart, ...params });
+  `, { weekStart, lastWeekStart, ...params });
   // Sites with zero operating hours in the week have no meaningful MTBF
   // (nothing to divide by, and mtbfHours would otherwise report them as 0h),
   // so they're excluded from the site list, pie, and overall figure. Ops
@@ -223,15 +254,11 @@ export async function getMtbfData({ year, week, sites = [], products = [] } = {}
       COUNT(DISTINCT t.Product) AS num_products
     FROM ${MTBF_TABLE} t
     JOIN (
-      SELECT DISTINCT Week_Start_Date
-      FROM ${MTBF_TABLE}
-      WHERE Week_Start_Date <= @weekStart
-      ORDER BY Week_Start_Date DESC
-      LIMIT 6
+      ${trendWeeksSubquery(MTBF_TABLE, monthRange)}
     ) w ON t.Week_Start_Date = w.Week_Start_Date
     WHERE TRUE ${where}
     GROUP BY week_start, week, site
-  `, { weekStart, ...params });
+  `, { weekStart, ...monthParams, ...params });
   const byWeek = new Map();
   for (const r of weeklyRows) {
     const opsHr = avgOpsHr(Number(r.ops_hr), Number(r.num_products));
@@ -251,7 +278,14 @@ export async function getMtbfData({ year, week, sites = [], products = [] } = {}
       return { week, mtbf: mtbfHours(opsHr, sevCount), ...bucketPercentages(hoursBySite, classifyMtbf) };
     });
 
-  return { snapshot, overall, weekly, selectedWeek: { year: anchor.year, week: anchor.week, start: weekStart } };
+  return {
+    snapshot,
+    overall,
+    weekly,
+    selectedWeek: monthRange
+      ? { year, month, start: weekStart, end: monthRange.end }
+      : { year: anchor.year, week: anchor.week, start: weekStart },
+  };
 }
 
 // Resolves a Select-Week filter value (year/week, or the latest week when
@@ -354,9 +388,27 @@ export async function getStabilityFilterOptions() {
     end: r.week_end.value,
   }));
 
+  // The in-progress week (if the table already has rows for it), offered
+  // separately so "Last week" stays the default completed week.
+  const currentRows = await runQuery(`
+    SELECT Year AS year, Week_Num AS week, Week_Start_Date AS week_start, Week_End_Date AS week_end
+    FROM ${UPTIME_TABLE}
+    WHERE Week_Start_Date <= CURRENT_DATE() AND Week_End_Date >= CURRENT_DATE()
+    GROUP BY year, week, week_start, week_end
+    LIMIT 1
+  `);
+  const currentWeek = currentRows.length
+    ? {
+      year: currentRows[0].year,
+      week: currentRows[0].week,
+      start: currentRows[0].week_start.value,
+      end: currentRows[0].week_end.value,
+    }
+    : null;
+
   const sites = await getAllSites();
 
-  return { weeks, sites };
+  return { weeks, currentWeek, sites };
 }
 
 // Same parallel-hours reasoning as uptimePct's avgOpsHr: a multi-product

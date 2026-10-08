@@ -598,6 +598,12 @@
           const label = `${w.year} · Week ${w.week} (${w.start} – ${w.end})${i === 0 ? ' · Last week' : ''}`;
           return `<option value="${i === 0 ? '' : `${w.year}-${w.week}`}">${escapeHtml(label)}</option>`;
         });
+        // The in-progress week sits right under "Last week".
+        if (json.currentWeek) {
+          const c = json.currentWeek;
+          const label = `${c.year} · Week ${c.week} (${c.start} – ${c.end}) · Current week`;
+          weekOptions.splice(1, 0, `<option value="${c.year}-${c.week}">${escapeHtml(label)}</option>`);
+        }
         weekSel.innerHTML = weekOptions.length ? weekOptions.join('') : '<option value="">Last week</option>';
 
         // gStore sites are a different product line from the Software
@@ -1357,7 +1363,7 @@
             <table class="sla-tickets-table">
               <thead>
                 <tr>
-                  <th>Case #</th><th>Site</th><th>Severity</th><th>Created</th><th>Closed</th><th>Resolution Time</th><th>Outcome</th>
+                  <th>Case #</th><th>Site</th><th>Severity</th><th>Start Time</th><th>End Time</th><th>Resolution Time</th><th>Outcome</th>
                 </tr>
               </thead>
               <tbody>${tickets.map(ticketRow).join('')}</tbody>
