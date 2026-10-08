@@ -4496,3 +4496,7 @@ td.col-mono {
   }
 }
 
+
+/* Week / Month are mutually exclusive: dim whichever isn't driving the period. */
+.filter-group.is-inactive .filter-select { opacity: 0.55; }
+.filter-group.is-inactive .filter-group-label { opacity: 0.7; }

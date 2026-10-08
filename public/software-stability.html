@@ -536,6 +536,8 @@
         if (weekSel) weekSel.value = '';
         if (monthSelClr) monthSelClr.value = '';
         if (siteSel) siteSel.value = '';
+        syncMonthToWeek();
+        syncPeriodFilterState();
         updateSummary();
         loadKpiData();
         loadUptimeAndMtbf();
@@ -1181,20 +1183,20 @@
     // affect these BigQuery-backed sections, so they don't trigger this). ----
     let stabilityRequestId = 0;
 
-    // Select Week and KPI Month are mutually exclusive: choosing one resets
-    // the other to "None". Week '' = last week (default), 'none' = not in use;
-    // Month '' = not in use. Adds the active period to `params`.
+    // Select Week drives the period unless it is 'none'; then KPI Month does.
+    // Picking a week shows the month it falls in (display only); picking a month
+    // sets Week to 'none'. Week '' = last week (default). Adds the period to `params`.
     function applyPeriodParams(params) {
       const weekVal = (document.getElementById('filterWeek') || {}).value || '';
       const monthVal = (document.getElementById('filterMonth') || {}).value || '';
-      if (monthVal) {
-        const [y, m] = monthVal.split('-');
-        params.set('year', y);
-        params.set('month', m);
-      } else if (weekVal && weekVal !== 'none') {
+      if (weekVal && weekVal !== 'none') {
         const [y, w] = weekVal.split('-');
         params.set('year', y);
         params.set('week', w);
+      } else if (weekVal === 'none' && monthVal) {
+        const [y, m] = monthVal.split('-');
+        params.set('year', y);
+        params.set('month', m);
       }
     }
 
@@ -1280,18 +1282,23 @@
         // Completed weeks only, newest first; the first (last week) is the default.
         const weekOptions = (json.weeks || []).map((w, i) => {
           const label = `${w.year} · Week ${w.week} (${w.start} – ${w.end})${i === 0 ? ' · Last week' : ''}`;
-          return `<option value="${i === 0 ? '' : `${w.year}-${w.week}`}">${escapeHtml(label)}</option>`;
+          return `<option value="${i === 0 ? '' : `${w.year}-${w.week}`}" data-end="${w.end}">${escapeHtml(label)}</option>`;
         });
         // "None" sits right under "Last week" so it's reachable without scrolling the long week list.
         const extraOptions = [];
         if (json.currentWeek) {
           const c = json.currentWeek;
           const label = `${c.year} · Week ${c.week} (${c.start} – ${c.end}) · Current week`;
-          extraOptions.push(`<option value="${c.year}-${c.week}">${escapeHtml(label)}</option>`);
+          extraOptions.push(`<option value="${c.year}-${c.week}" data-end="${c.end}">${escapeHtml(label)}</option>`);
         }
         extraOptions.push('<option value="none">None</option>');
+        // Current week goes first, then Last week (the default), then None.
+        const currentOpt = json.currentWeek ? extraOptions.shift() : null;
         weekOptions.splice(1, 0, ...extraOptions);
+        if (currentOpt) weekOptions.unshift(currentOpt);
         weekSel.innerHTML = weekOptions.length > 1 ? weekOptions.join('') : '<option value="">Last week</option><option value="none">None</option>';
+        weekSel.value = ''; // keep Last week as the default selection
+        syncMonthToWeek();
 
         const siteOptions = (json.sites || []).map((s) => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`);
         siteSel.innerHTML = `<option value="">All</option>${siteOptions.join('')}`;
@@ -1300,13 +1307,37 @@
       }
     }
 
+    // Shows which month the selected week belongs to (by the week's end date).
+    // Display only: the week still drives the data while it is not 'none'.
+    function syncMonthToWeek() {
+      const weekSel = document.getElementById('filterWeek');
+      const monthSel = document.getElementById('filterMonth');
+      if (!weekSel || !monthSel || weekSel.value === 'none') return;
+      const end = (weekSel.selectedOptions[0] || {}).dataset?.end;
+      if (!end) return;
+      const [y, m] = end.split('-').map(Number);
+      const val = `${y}-${m}`;
+      monthSel.value = [...monthSel.options].some((o) => o.value === val) ? val : '';
+      syncPeriodFilterState();
+    }
+
+    // Grey out whichever filter isn't driving the period.
+    function syncPeriodFilterState() {
+      const monthActive = (document.getElementById('filterWeek') || {}).value === 'none';
+      const weekGroup = document.querySelector('.filter-group--week');
+      const monthGroup = document.querySelector('.filter-group--month');
+      if (weekGroup) weekGroup.classList.toggle('is-inactive', monthActive);
+      if (monthGroup) monthGroup.classList.toggle('is-inactive', !monthActive);
+    }
+
     document.getElementById('filterWeek').addEventListener('change', () => {
-      // Picking a week clears the month filter.
+      // Picking a week shows the month it belongs to. Week = None with no month
+      // would leave no period, so fall back to last week.
       const monthSel = document.getElementById('filterMonth');
       const weekSelEl = document.getElementById('filterWeek');
-      if (monthSel && weekSelEl.value !== 'none') monthSel.value = '';
-      // Week = None with no month chosen would leave no period; revert to last week.
       if (weekSelEl.value === 'none' && monthSel && !monthSel.value) weekSelEl.value = '';
+      syncMonthToWeek();
+      syncPeriodFilterState();
       loadUptimeAndMtbf();
       loadKpiData();
     });
@@ -1479,11 +1510,15 @@
         options.push(`<option value="${year}-${month}">${label}</option>`);
       }
       sel.innerHTML = options.join('');
-      sel.value = ''; // default: Month = None, Week = Last week
+      sel.value = ''; // default: Week = Last week; month follows the week once weeks load
+      syncMonthToWeek();
+      syncPeriodFilterState();
       sel.addEventListener('change', () => {
-        // Picking a month clears the week filter; clearing the month falls back to last week.
+        // Picking a month sets Week to None; clearing the month falls back to last week.
         const weekSel = document.getElementById('filterWeek');
         if (weekSel) weekSel.value = sel.value ? 'none' : '';
+        syncMonthToWeek();
+        syncPeriodFilterState();
         loadKpiData();
         loadUptimeAndMtbf();
       });
