@@ -14,12 +14,12 @@ const bigquery = new BigQuery({ projectId: GCLOUD_PROJECT_ID });
 // Sites hidden from every Software Stability view (dropdown, pies, lists, trends).
 const EXCLUDED_SITES = [
   'LL Bean', 'LL-Bean', 'Coupang DGU', 'GXO Hager', 'GXO-Adidas', 'GXO-Disney',
-  'GXO-Eddie Bauer', 'Walmart USA (Nashville)', 'Walmart-Canada (Edwards, Mississauga)',
+  'GXO-Eddie Bauer', 'Walmart USA (Nashville)', 'Walmart-Canada (Edwards, Mississauga)', 'Macys', 'GXO-YL',
 ];
-const EXCLUDED_SITES_SQL = EXCLUDED_SITES.map((s) => `'${s.replace(/'/g, "\\'")}'`).join(', ');
+const EXCLUDED_SITES_SQL = EXCLUDED_SITES.map((s) => s.toLowerCase()).map((s) => `'${s.replace(/'/g, "\\'")}'`).join(', ');
 
-const UPTIME_TABLE = `(SELECT * FROM \`${GCLOUD_PROJECT_ID}.sw_support_v1.uptime_main\` WHERE Site NOT IN (${EXCLUDED_SITES_SQL}))`;
-const MTBF_TABLE = `(SELECT * FROM \`${GCLOUD_PROJECT_ID}.sw_support_v1.uptime_main\` WHERE Site NOT IN (${EXCLUDED_SITES_SQL}))`;
+const UPTIME_TABLE = `(SELECT * FROM \`${GCLOUD_PROJECT_ID}.sw_support_v1.uptime_main\` WHERE LOWER(Site) NOT IN (${EXCLUDED_SITES_SQL}))`;
+const MTBF_TABLE = `(SELECT * FROM \`${GCLOUD_PROJECT_ID}.sw_support_v1.uptime_main\` WHERE LOWER(Site) NOT IN (${EXCLUDED_SITES_SQL}))`;
 
 // Ticket-level Zendesk data for the Ticket Inflow/Backlog Health panels — one
 // row per ticket, refreshed daily. Ticket_Solved_IST is unset for a
