@@ -11,8 +11,15 @@ if (!GCLOUD_PROJECT_ID) throw new Error('Missing required env var: GCLOUD_PROJEC
 
 const bigquery = new BigQuery({ projectId: GCLOUD_PROJECT_ID });
 
-const UPTIME_TABLE = `\`${GCLOUD_PROJECT_ID}.sw_support_v1.uptime_main\``;
-const MTBF_TABLE = `\`${GCLOUD_PROJECT_ID}.sw_support_v1.uptime_main\``;
+// Sites hidden from every Software Stability view (dropdown, pies, lists, trends).
+const EXCLUDED_SITES = [
+  'LL Bean', 'LL-Bean', 'Coupang DGU', 'GXO Hager', 'GXO-Adidas', 'GXO-Disney',
+  'GXO-Eddie Bauer', 'Walmart USA (Nashville)', 'Walmart-Canada (Edwards, Mississauga)',
+];
+const EXCLUDED_SITES_SQL = EXCLUDED_SITES.map((s) => `'${s.replace(/'/g, "\\'")}'`).join(', ');
+
+const UPTIME_TABLE = `(SELECT * FROM \`${GCLOUD_PROJECT_ID}.sw_support_v1.uptime_main\` WHERE Site NOT IN (${EXCLUDED_SITES_SQL}))`;
+const MTBF_TABLE = `(SELECT * FROM \`${GCLOUD_PROJECT_ID}.sw_support_v1.uptime_main\` WHERE Site NOT IN (${EXCLUDED_SITES_SQL}))`;
 
 // Ticket-level Zendesk data for the Ticket Inflow/Backlog Health panels — one
 // row per ticket, refreshed daily. Ticket_Solved_IST is unset for a

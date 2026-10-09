@@ -36,6 +36,10 @@
         <span class="env-dot" aria-hidden="true"></span>
         Production
       </span>
+      <button id="exportCsvBtn" class="refresh-btn" type="button" title="Download the data on this page as CSV">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 4v11m0 0l-4-4m4 4l4-4M5 19h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Export CSV</span>
+      </button>
     </div>
   </header>
 
@@ -452,6 +456,7 @@
     </section>
   </main>
 
+  <script src="export.js"></script>
   <script>
     // ---- Filter bar: active-filter summary + clear all ----
     // POD is a "deselect to narrow" group (all PODs start selected), unlike
@@ -602,7 +607,7 @@
       ul.innerHTML = '';
 
       ['red', 'yellow', 'green'].forEach((status) => {
-        buckets[status].forEach((site) => {
+        [...buckets[status]].sort((a, b) => a.pct - b.pct || String(a.name).localeCompare(String(b.name))).forEach((site) => {
           const li = document.createElement('li');
           li.className = 'uptime-row';
           li.setAttribute('data-status', status);
@@ -610,7 +615,6 @@
             <span class="uptime-dot" style="--dot-color: ${colorVar[status]}"></span>
             <span class="uptime-name-block">
               <span class="uptime-name">${site.name}</span>
-              <span class="uptime-threshold">${site.threshold}</span>
             </span>
             <span class="uptime-pct" style="--pct-color: ${colorVar[status]}">${site.pct.toFixed(2)}%</span>
           `;
@@ -916,7 +920,7 @@
       ul.innerHTML = '';
 
       ['red', 'yellow', 'green'].forEach((status) => {
-        buckets[status].forEach((site) => {
+        [...buckets[status]].sort((a, b) => a.hours - b.hours || String(a.name).localeCompare(String(b.name))).forEach((site) => {
           const li = document.createElement('li');
           li.className = 'mtbf-row';
           li.setAttribute('data-status', status);
@@ -924,7 +928,6 @@
             <span class="mtbf-dot" style="--dot-color: ${colorVar[status]}"></span>
             <span class="mtbf-name-block">
               <span class="mtbf-name">${site.name}</span>
-              <span class="mtbf-threshold">${site.threshold}</span>
             </span>
             <span class="mtbf-pct" style="--pct-color: ${colorVar[status]}">${site.hours.toFixed(2)}</span>
           `;
@@ -1258,6 +1261,8 @@
         if (!mtbfRes.ok) throw new Error(mtbfJson.error || `HTTP ${mtbfRes.status}`);
 
         setStabilityLoadingState(false);
+        CsvExport.record('Uptime', uptimeJson);
+        CsvExport.record('MTBF', mtbfJson);
         renderUptime(uptimeJson.snapshot);
         renderUptimeTrendChart(uptimeJson.weekly);
         renderMtbf(mtbfJson.snapshot, mtbfJson.overall);
@@ -1268,6 +1273,8 @@
         console.error('Failed to load uptime/MTBF data:', err);
       }
     }
+
+    document.getElementById('exportCsvBtn').addEventListener('click', () => CsvExport.run('software-stability'));
 
     // ---- Select Week / Site dropdowns, populated from the live BigQuery
     // catalog so they never drift from what's actually queryable. ----
@@ -1589,6 +1596,7 @@
         if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
         if (requestId !== kpiRequestId) return; // a newer request has since started
         setKpiLoadingState(false);
+        CsvExport.record('Software Stability KPIs', data);
         renderKpiData(data);
         statusEl.hidden = true;
       } catch (err) {

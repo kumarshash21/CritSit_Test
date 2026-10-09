@@ -36,6 +36,10 @@
         <span class="env-dot" aria-hidden="true"></span>
         Production
       </span>
+      <button id="exportCsvBtn" class="refresh-btn" type="button" title="Download the data on this page as CSV">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 4v11m0 0l-4-4m4 4l4-4M5 19h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Export CSV</span>
+      </button>
       <form method="post" action="/api/ticket-health/logout">
         <button type="submit" class="page-nav-link" style="background:none;border:none;cursor:pointer;font:inherit;">Log out</button>
       </form>
@@ -455,6 +459,7 @@
     </div>
   </div>
 
+  <script src="export.js"></script>
   <script>
     // ---- Filter bar: active-filter summary + clear all ----
     // POD is a "deselect to narrow" group (all PODs start selected), unlike
@@ -1135,6 +1140,7 @@
         if (requestId !== inflowRequestId) return;
         if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
         setInflowLoadingState(false);
+        CsvExport.record('Inflow', data);
 
         setText('inflowHeadlineValue', formatInt(data.headline.count));
         setText('inflowHeadlineBadge', formatSignedPct(data.headline.wowPct));
@@ -1171,6 +1177,7 @@
         if (requestId !== backlogRequestId) return;
         if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
         setBacklogLoadingState(false);
+        CsvExport.record('Backlog', data);
 
         setText('backlogHeadlineValue', formatInt(data.headline.count));
         setText('backlogHeadlineBadge', formatSignedPct(data.headline.wowPct));
@@ -1221,6 +1228,7 @@
         if (requestId !== resolutionRequestId) return;
         if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
         setResolutionLoadingState(false);
+        CsvExport.record('Resolution Sev1-2', data);
 
         setText('resolutionHeadlineValue', formatInt(data.headline.count));
         setText('resolutionHeadlineBadge', formatSignedPct(data.headline.wowPct));
@@ -1257,6 +1265,8 @@
       }
     }
 
+    document.getElementById('exportCsvBtn').addEventListener('click', () => CsvExport.run('ticket-health'));
+
     let resolutionSev3SitewiseData = [];
 
     async function loadTicketResolutionSev3() {
@@ -1269,6 +1279,7 @@
         if (requestId !== resolutionSev3RequestId) return;
         if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
         setResolutionSev3LoadingState(false);
+        CsvExport.record('Resolution Sev3', data);
 
         setText('resolutionSev3HeadlineValue', formatInt(data.headline.count));
         setText('resolutionSev3HeadlineBadge', formatSignedPct(data.headline.wowPct));

@@ -36,6 +36,10 @@
         <span class="env-dot" aria-hidden="true"></span>
         Production
       </span>
+      <button id="exportCsvBtn" class="refresh-btn" type="button" title="Download the data on this page as CSV">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 4v11m0 0l-4-4m4 4l4-4M5 19h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Export CSV</span>
+      </button>
       <button id="refreshBtn" class="refresh-btn" type="button">
         <svg id="refreshIcon" class="refresh-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path d="M20 11A8.1 8.1 0 0 0 4.5 9M4 5v4h4M4 13a8.1 8.1 0 0 0 15.5 2M20 19v-4h-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -395,6 +399,7 @@
     </div>
   </div>
 
+  <script src="export.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
