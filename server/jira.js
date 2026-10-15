@@ -160,3 +160,29 @@ export async function fetchGmTicketsByKeys(keys) {
   }
   return out;
 }
+
+/**
+ * Fetch Jira issues by numeric issue id (what Salesforce stores in
+ * Case.Jira_Ticket_Id__c) with the fields the Sev1 Peak Readiness page needs.
+ * customfield_10600 is the GM Team picklist.
+ */
+export async function fetchIssuesByIds(ids) {
+  const idList = [...new Set(ids)].filter(Boolean);
+  const out = [];
+  for (let i = 0; i < idList.length; i += 50) {
+    const jql = `id in (${idList.slice(i, i + 50).join(',')})`;
+    let nextPageToken;
+    do {
+      const params = {
+        jql,
+        maxResults: 100,
+        fields: 'status,resolution,issuetype,project,customfield_10600',
+      };
+      if (nextPageToken) params.nextPageToken = nextPageToken;
+      const data = await jiraGet('search/jql', params);
+      out.push(...(data.issues || []));
+      nextPageToken = data.nextPageToken;
+    } while (nextPageToken);
+  }
+  return out;
+}

@@ -10,6 +10,8 @@ import {
 } from './salesforce.js';
 import { dayKeyInZone, isValidTimeZone, zonedMidnightUtc } from './tz.js';
 import { computeTeoKpis, currentIstYearMonth } from './teoKpi.js';
+import { getSev1Peak, isSev1Site } from './sev1Peak.js';
+import { getSev2Peak, isSev2Site } from './sev2Peak.js';
 import { getPodMap, buildPodLookup, accountPod } from './podMap.js';
 import {
   getUptimeData, getMtbfData, getStabilityFilterOptions, getAllSites,
@@ -113,13 +115,18 @@ function isTicketHealthAuthed(req) {
   return true;
 }
 
-function ticketHealthLoginPage({ error } = {}) {
+const PROTECTED_PAGES = {
+  '/ticket-health': { title: 'Ticket Health', file: 'ticket-health.html' },
+};
+
+function ticketHealthLoginPage({ error, next = '/ticket-health' } = {}) {
+  const page = PROTECTED_PAGES[next] || PROTECTED_PAGES['/ticket-health'];
   return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Ticket Health &middot; CritSit Dashboard</title>
+  <title>${page.title} &middot; CritSit Dashboard</title>
   <link rel="icon" type="image/jpeg" href="go-logo.jpg" />
   <link rel="stylesheet" href="styles.css" />
   <style>
@@ -175,8 +182,9 @@ function ticketHealthLoginPage({ error } = {}) {
 <body>
   <div class="login-shell">
     <form class="login-card" method="post" action="/api/ticket-health/login">
+      <input type="hidden" name="next" value="${next in PROTECTED_PAGES ? next : '/ticket-health'}" />
       <img src="go-logo.jpg" alt="" />
-      <h1>Ticket Health</h1>
+      <h1>${page.title}</h1>
       <p>Enter the password to view this page.</p>
       ${error ? `<p class="login-error">${error}</p>` : ''}
       <input type="password" name="password" placeholder="Password" autofocus required />
@@ -189,7 +197,7 @@ function ticketHealthLoginPage({ error } = {}) {
 
 function requireTicketHealthPage(req, res, next) {
   if (isTicketHealthAuthed(req)) return next();
-  res.status(401).type('html').send(ticketHealthLoginPage());
+  res.status(401).type('html').send(ticketHealthLoginPage({ next: req.path }));
 }
 
 function requireTicketHealthApi(req, res, next) {
@@ -199,8 +207,9 @@ function requireTicketHealthApi(req, res, next) {
 
 app.post('/api/ticket-health/login', (req, res) => {
   const { password } = req.body || {};
+  const next = req.body?.next in PROTECTED_PAGES ? req.body.next : '/ticket-health';
   if (password !== TICKET_HEALTH_PASSWORD) {
-    return res.status(401).type('html').send(ticketHealthLoginPage({ error: 'Incorrect password.' }));
+    return res.status(401).type('html').send(ticketHealthLoginPage({ error: 'Incorrect password.', next }));
   }
   const token = crypto.randomBytes(24).toString('hex');
   ticketHealthSessions.set(token, Date.now() + TICKET_HEALTH_SESSION_TTL_MS);
@@ -208,23 +217,32 @@ app.post('/api/ticket-health/login', (req, res) => {
     'Set-Cookie',
     `${TICKET_HEALTH_COOKIE}=${token}; HttpOnly; Path=/; Max-Age=${TICKET_HEALTH_SESSION_TTL_MS / 1000}; SameSite=Lax`
   );
-  res.redirect('/ticket-health.html');
+  res.redirect(next);
 });
 
 app.post('/api/ticket-health/logout', (req, res) => {
   const token = parseCookies(req)[TICKET_HEALTH_COOKIE];
   if (token) ticketHealthSessions.delete(token);
   res.setHeader('Set-Cookie', `${TICKET_HEALTH_COOKIE}=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax`);
-  res.redirect('/ticket-health.html');
+  res.redirect('/ticket-health');
 });
 
 // Must come before express.static so an unauthenticated request for the
 // page itself gets the login form instead of the real file.
-app.get('/ticket-health.html', requireTicketHealthPage, (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'public', 'ticket-health.html'));
+for (const [route, { file }] of Object.entries(PROTECTED_PAGES)) {
+  app.get(route, requireTicketHealthPage, (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'public', file));
+  });
+}
+
+// Hide the .html extension: /foo.html -> /foo (and /index.html -> /).
+app.get(/^\/(.+)\.html$/, (req, res) => {
+  const name = req.params[0];
+  const qs = req.originalUrl.includes('?') ? req.originalUrl.slice(req.originalUrl.indexOf('?')) : '';
+  res.redirect(301, (name === 'index' ? '/' : '/' + name) + qs);
 });
 
-app.use(express.static(path.join(__dirname, '..', 'public')));
+app.use(express.static(path.join(__dirname, '..', 'public'), { extensions: ['html'] }));
 
 app.get('/api/dashboard', async (req, res) => {
   try {
@@ -301,6 +319,40 @@ app.get('/api/trend/history', async (req, res) => {
     const timeZone = resolveTimeZone(req.query.tz);
     const cases = await getTicketHistory(days, timeZone);
     res.json({ days, cases });
+  } catch (err) {
+    console.error(err);
+    res.status(502).json({ error: err.message });
+  }
+});
+
+app.get('/api/sev1-peak', async (req, res) => {
+  try {
+    const iso = /^\d{4}-\d{2}-\d{2}$/;
+    const { from, to } = req.query;
+    if ((from && !iso.test(from)) || (to && !iso.test(to))) {
+      return res.status(400).json({ error: 'from/to must be YYYY-MM-DD (to is exclusive)' });
+    }
+    const site = req.query.site || '';
+    const all = req.query.scope === 'all';
+    if (site && !isSev1Site(site, all)) return res.status(400).json({ error: 'unknown site' });
+    res.json(await getSev1Peak(from, to, { refresh: req.query.refresh === '1', site, all }));
+  } catch (err) {
+    console.error(err);
+    res.status(502).json({ error: err.message });
+  }
+});
+
+app.get('/api/sev2-peak', async (req, res) => {
+  try {
+    const iso = /^\d{4}-\d{2}-\d{2}$/;
+    const { from, to } = req.query;
+    if ((from && !iso.test(from)) || (to && !iso.test(to))) {
+      return res.status(400).json({ error: 'from/to must be YYYY-MM-DD (to is exclusive)' });
+    }
+    const site = req.query.site || '';
+    const all = req.query.scope === 'all';
+    if (site && !isSev2Site(site, all)) return res.status(400).json({ error: 'unknown site' });
+    res.json(await getSev2Peak(from, to, { refresh: req.query.refresh === '1', site, all }));
   } catch (err) {
     console.error(err);
     res.status(502).json({ error: err.message });

@@ -442,7 +442,7 @@ function scheduleAutoRefresh() {
   refreshTimer = setInterval(loadDashboard, REFRESH_INTERVAL_MS);
 }
 
-document.getElementById('exportCsvBtn').addEventListener('click', () => {
+document.getElementById('exportCsvBtn')?.addEventListener('click', () => {
   if (!lastCasesData) { CsvExport.run('critsit-tickets', ''); return; }
   const { columns, rows } = lastCasesData;
   const csv = [CsvExport.toCsvLine(columns.map((c) => c.label)),

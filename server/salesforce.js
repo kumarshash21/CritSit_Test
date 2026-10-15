@@ -410,6 +410,46 @@ export async function getTrendDayDetail(dateStr, timeZone = 'UTC') {
   return cases;
 }
 
+/**
+ * Peak Readiness pages: Software-category incidents of one Highest_Severity__c
+ * created in [startDate, endDate) (YYYY-MM-DD, IST day boundaries) at the
+ * given Account_Name__c values. `minImpact` adds Impact_Percentage__c >= n.
+ */
+async function getPeakCases(severity, startDate, endDate, accounts, { minImpact, extraFields = [] } = {}) {
+  const fields = [
+    'CaseNumber', 'CreatedDate', 'Account_Name__c', 'Technical_Impacted_Area__c',
+    'Downtime__c', 'Jira_Ticket_Id__c', ...extraFields,
+  ];
+  const soql =
+    `SELECT ${fields.join(', ')} FROM Case ` +
+    `WHERE Highest_Severity__c = ${soqlString(severity)} AND Type = 'Incident' ` +
+    `AND Category__c = 'Software' ` +
+    (minImpact != null ? `AND Impact_Percentage__c >= ${Number(minImpact)} ` : '') +
+    `AND CreatedDate >= ${startDate}T00:00:00+05:30 AND CreatedDate < ${endDate}T00:00:00+05:30 ` +
+    `AND Account_Name__c IN (${accounts.map(soqlString).join(',')})`;
+
+  const records = [];
+  let nextPath = `/services/data/${SF_API_VERSION}/query?q=${encodeURIComponent(soql)}`;
+  while (nextPath) {
+    const result = await sfFetch(nextPath);
+    records.push(...(result.records || []));
+    nextPath = result.nextRecordsUrl || null;
+  }
+  console.log(`[salesforce] ${severity} peak cases fetched (${records.length})`);
+  return records;
+}
+
+export const getSev1PeakCases = (startDate, endDate, accounts) =>
+  getPeakCases('Severity 1', startDate, endDate, accounts);
+
+// Sev2 page counts only 50%+ impact and also needs the subject, status and
+// Operational Impacted Area.
+export const getSev2PeakCases = (startDate, endDate, accounts) =>
+  getPeakCases('Severity 2', startDate, endDate, accounts, {
+    minImpact: 50,
+    extraFields: ['Subject', 'Status', 'Operational_Impacted_Area__c', 'Impact_Percentage__c'],
+  });
+
 // ---------------------------------------------------------------------------
 // Ticket Inflow Health (Ticket Health page). Tickets are created in
 // Salesforce first — the BigQuery-backed panel reads a Zendesk mirror of
