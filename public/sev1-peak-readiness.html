@@ -207,14 +207,20 @@ const dayAfter=n=>new Date(Date.now()+(5.5/24+n)*86400000).toISOString().slice(0
 const RANGES={sep30:{to:'2026-10-01',label:'30 Sep 2026'},now:{label:'today'}};
 let rng='now',loadSeq=0;
 let siteSel=new URLSearchParams(location.search).getAll('site').filter(Boolean).join('\n');
-const ALLSC=new URLSearchParams(location.search).get('scope')==='all';
+let ALLSC=new URLSearchParams(location.search).get('scope')==='all';
 window.__setSite=x=>{if(x!==siteSel){siteSel=x;loadLive()}};
+// Month filter (driven by the parent page): overrides the 1 Jul range buttons while set.
+let monSel=new URLSearchParams(location.search).get('month')||'';
+const monRange=m=>{if(!/^\d{4}-\d{2}$/.test(m))return null;const[y,mo]=m.split('-').map(Number),n=mo===12?[y+1,1]:[y,mo+1],p=v=>String(v).padStart(2,'0');return{from:`${y}-${p(mo)}-01`,to:`${n[0]}-${p(n[1])}-01`,label:new Date(Date.UTC(y,mo-1,1)).toLocaleDateString('en-GB',{month:'long',year:'numeric',timeZone:'UTC'})}};
+const syncRangeUi=()=>{const e=document.getElementById('rangefilters');if(e)e.hidden=!!monRange(monSel)};
+addEventListener('message',e=>{if(e.origin===location.origin&&e.data&&typeof e.data.setScope==='string'&&(e.data.setScope==='all')!==ALLSC){ALLSC=e.data.setScope==='all';if(typeof e.data.setSite==='string')siteSel=e.data.setSite;loadLive()}});
+addEventListener('message',e=>{if(e.origin===location.origin&&e.data&&typeof e.data.setMonth==='string'&&e.data.setMonth!==monSel){monSel=e.data.setMonth;syncRangeUi();loadLive()}});
 async function loadLive(retry=true){
- const el=$('#livestat'),seq=++loadSeq,R=RANGES[rng],to=R.to||dayAfter(1);
- $('#subtxt').textContent=`Sev1 incidents from 1 Jul 2026 to ${R.label} across the ${ALLSC?'78 sites':'26 peak-planning sites'}. Peak start is assumed to be 23 Nov 2026.`;
+ const el=$('#livestat'),seq=++loadSeq,R=RANGES[rng],to=R.to||dayAfter(1),MR=monRange(monSel),FROM=MR?MR.from:'2026-07-01';
+ $('#subtxt').textContent=`Sev1 incidents ${MR?'in '+MR.label:'from 1 Jul 2026 to '+R.label} across the ${ALLSC?'78 sites':'26 peak-planning sites'}. Peak start is assumed to be 23 Nov 2026.`;
  el.textContent='Loading live data from Salesforce\u2026';document.body.classList.add('sk');
  try{
-  const r=await fetch('/api/sev1-peak?from=2026-07-01&to='+to+(siteSel?siteSel.split('\n').map(x=>'&site='+encodeURIComponent(x)).join(''):'')+(ALLSC?'&scope=all':''));if(!r.ok)throw new Error((await r.json().catch(()=>({}))).error||r.status);
+  const r=await fetch('/api/sev1-peak?from='+FROM+'&to='+(MR?MR.to:to)+(siteSel?siteSel.split('\n').map(x=>'&site='+encodeURIComponent(x)).join(''):'')+(ALLSC?'&scope=all':''));if(!r.ok)throw new Error((await r.json().catch(()=>({}))).error||r.status);
   const L=await r.json();if(seq!==loadSeq)return;
   ['dtstats','ownerbars','goN','cuN','ipN','sitebar','tot','bug','nb','cf','bs','heat','bugbar','gm','buglist','nonbuglist'].concat('allSites').forEach(k=>{D[k]=L[k]});
   paintTop();paintBugs();paintNonBugs();render();
@@ -286,6 +292,6 @@ $('#theme').onclick=()=>{const dark=document.documentElement.dataset.theme?docum
 matchMedia('(prefers-color-scheme:dark)').addEventListener('change',render);
 paintTop();paintBugs();paintNonBugs();render();
 document.querySelectorAll('#rangefilters .fbtn').forEach(b=>b.onclick=()=>{rng=b.dataset.r;document.querySelectorAll('#rangefilters .fbtn').forEach(x=>x.setAttribute('aria-pressed',x===b));loadLive()});
-loadLive();
+syncRangeUi();loadLive();
 </script>
 </body></html>

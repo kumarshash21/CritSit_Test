@@ -144,7 +144,7 @@ nav[role=tablist] button[aria-selected="true"]{border-bottom-color:#22c55e}
 <div class="cs-topbar"><div class="cs-brand"><img src="go-logo.jpg" alt="" width="34" height="34"><div><b>CritSit Dashboard</b><span>GreyOrange Service &middot; Live Operations</span></div></div><div class="cs-pills" role="navigation" aria-label="Primary"><a href="/">Home</a><a href="/software-stability">Software Stability</a><a href="/ticket-health">Ticket Health</a><a href="/sev1-peak-readiness">Sev 1 Peak Readiness</a><a href="/sev2-peak-readiness">Sev 2 Peak Readiness</a><a href="/sev-peak-readiness" class="is-active">CritSit Data</a></div><div class="cs-meta"><span class="cs-env"><i></i>Production</span><button class="cs-refresh" type="button" onclick="location.reload()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 11A8.1 8.1 0 0 0 4.5 9M4 5v4h4M4 13a8.1 8.1 0 0 0 15.5 2M20 19v-4h-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Refresh</span></button></div></div>
 <div class="sevbar">
 <h1>CritSit data</h1>
-<div class="filters" id="sevfilters" role="group" aria-label="Severity (multi-select)"><button class="fbtn" type="button" aria-pressed="true" data-s="1">Sev 1</button><button class="fbtn" type="button" aria-pressed="true" data-s="2">Sev 2</button><label for="sitesel">Site</label><details class="msel" id="sitesel"><summary id="sitesum">All sites</summary><div class="mpanel"><button type="button" class="fbtn" id="siteclear">Clear (all sites)</button><div id="sitelist"></div></div></details><button class="fbtn" type="button" id="resetall">Reset filters</button></div>
+<div class="filters" id="sevfilters" role="group" aria-label="Severity (multi-select)"><button class="fbtn" type="button" aria-pressed="true" data-s="1">Sev 1</button><button class="fbtn" type="button" aria-pressed="true" data-s="2">Sev 2</button><label for="monthsel">Month</label><select id="monthsel" aria-label="Month"></select><label for="sitesel">Site</label><details class="msel" id="sitesel"><summary id="sitesum">All sites</summary><div class="mpanel"><button type="button" class="fbtn" id="siteclear">Clear (all sites)</button><button type="button" class="fbtn" id="sitetop" aria-pressed="false" style="margin-left:6px">Top 26 sites</button><div id="sitelist"></div></div></details><button class="fbtn" type="button" id="resetall">Reset filters</button></div>
 <p class="sevnote" id="sitenote" hidden>Showing live data for the selected site only. The Prevention plan tab is a saved snapshot, filtered to the site.</p>
 </div>
 <div id="combined" hidden>
@@ -172,31 +172,45 @@ const frames={1:document.getElementById('f1'),2:document.getElementById('f2')};
 const skel=document.getElementById('frameskel'),comb=document.getElementById('combined'),framesEl=document.getElementById('frames');
 const sel=document.getElementById('sitesel'),slist=document.getElementById('sitelist'),qs=new URLSearchParams(location.search);
 const $=s=>document.querySelector(s),esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-let sevs=new Set([1,2]),chosen=new Set(),known=new Set(),cseq=0,cdata=null,nbf='All';
-const siteStr=()=>[...chosen].join('\n'),siteQ=()=>[...chosen].map(x=>'&site='+encodeURIComponent(x)).join('');
+let sevs=new Set([1,2]),month='',topMode=false,chosen=new Set(),known=new Set(),cseq=0,cdata=null,nbf='All';
+const siteStr=()=>[...chosen].join('\n'),scopeP=()=>topMode?'top':'all',siteQ=()=>[...chosen].map(x=>'&site='+encodeURIComponent(x)).join('');
+// Month filter: Jul 2026 up to the current IST month. '' = whole period (1 Jul to today).
+const istNow=new Date(Date.now()+5.5*3600000),MFROM=[2026,7];
+function monthRange(m){if(!m)return null;const[y,mo]=m.split('-').map(Number),nx=mo===12?[y+1,1]:[y,mo+1],p=n=>String(n).padStart(2,'0');return{from:`${y}-${p(mo)}-01`,to:`${nx[0]}-${p(nx[1])}-01`}}
+function monthQ(){const r=monthRange(month);return r?`from=${r.from}&to=${r.to}`:''}
+(function(){const ms=document.getElementById('monthsel'),o=['<option value="">All (1 Jul – today)</option>'];let y=MFROM[0],m=MFROM[1];const ey=istNow.getUTCFullYear(),em=istNow.getUTCMonth()+1;
+ while(y<ey||(y===ey&&m<=em)){o.push(`<option value="${y}-${String(m).padStart(2,'0')}">${new Date(Date.UTC(y,m-1,1)).toLocaleDateString('en-GB',{month:'long',year:'numeric',timeZone:'UTC'})}</option>`);if(++m>12){m=1;y++}}
+ ms.innerHTML=o.join('');
+ ms.onchange=()=>{month=ms.value;for(const k in frames)frames[k].contentWindow&&frames[k].contentWindow.postMessage({setMonth:month},location.origin);if(sevs.size===2)loadCombined()}})();
 function url(){try{if(location.search)history.replaceState(null,'',location.pathname)}catch(e){}}
 function show(){
  const both=sevs.size===2,one=both?0:[...sevs][0];
- document.querySelectorAll('#sevfilters .fbtn').forEach(b=>b.setAttribute('aria-pressed',sevs.has(+b.dataset.s)));
+ document.querySelectorAll('#sevfilters .fbtn[data-s]').forEach(b=>b.setAttribute('aria-pressed',sevs.has(+b.dataset.s)));
  comb.hidden=!both;framesEl.hidden=both;
  if(both){skel.hidden=true;loadCombined()}
  else{
-  for(const k in frames){const f=frames[k];f.hidden=k!=one;if(k==one&&!f.src)f.src=f.dataset.src+siteQ()}
+  for(const k in frames){const f=frames[k];f.hidden=k!=one;if(k==one&&!f.src)f.src=f.dataset.src.replace('scope=all','scope='+scopeP())+siteQ()+(month?'&month='+month:'')}
   skel.hidden=!!frames[one].dataset.loaded;
  }
  url();
 }
+function setTopQuiet(){topMode=false;for(const k in frames)frames[k].contentWindow&&frames[k].contentWindow.postMessage({setScope:'all'},location.origin)}
+function setTop(v){topMode=v;if(v){chosen.clear();known.clear()}
+ for(const k in frames)frames[k].contentWindow&&frames[k].contentWindow.postMessage({setScope:scopeP(),setSite:siteStr()},location.origin);
+ renderSites();document.getElementById('sitenote').hidden=true;if(sevs.size===2)loadCombined()}
 function pushSite(){for(const k in frames)frames[k].contentWindow&&frames[k].contentWindow.postMessage({setSite:siteStr()},location.origin);document.getElementById('sitenote').hidden=!chosen.size||sevs.size===2;if(sevs.size===2)loadCombined()}
 function renderSites(){
  slist.innerHTML=[...known].sort((a,b)=>a.localeCompare(b)).map(n=>`<label><input type="checkbox" value="${esc(n)}"${chosen.has(n)?' checked':''}> ${esc(n)}</label>`).join('');
- document.getElementById('sitesum').textContent=!chosen.size?'All sites':chosen.size===1?[...chosen][0]:chosen.size+' sites selected';
+ document.getElementById('sitetop').setAttribute('aria-pressed',topMode);
+ document.getElementById('sitesum').textContent=topMode?'Top 26 sites':!chosen.size?'All sites':chosen.size===1?[...chosen][0]:chosen.size+' sites selected';
 }
-function addSites(list){let ch=false;[...list,...chosen].forEach(n=>{if(!known.has(n)){known.add(n);ch=true}});if(ch)renderSites()}
-slist.onchange=e=>{const c=e.target;if(c.checked)chosen.add(c.value);else chosen.delete(c.value);renderSites();url();pushSite()};
-document.getElementById('resetall').onclick=()=>{sevs=new Set([1,2]);chosen.clear();bflt='All';nbf='All';sel.open=false;renderSites();show();pushSite()};
-document.getElementById('siteclear').onclick=()=>{chosen.clear();renderSites();url();pushSite()};
+function addSites(list){if(topMode)return;let ch=false;[...list,...chosen].forEach(n=>{if(!known.has(n)){known.add(n);ch=true}});if(ch)renderSites()}
+slist.onchange=e=>{const c=e.target;if(topMode){setTopQuiet()}if(c.checked)chosen.add(c.value);else chosen.delete(c.value);renderSites();url();pushSite()};
+document.getElementById('resetall').onclick=()=>{sevs=new Set([1,2]);if(topMode)setTopQuiet();chosen.clear();bflt='All';nbf='All';month='';document.getElementById('monthsel').value='';for(const k in frames)frames[k].contentWindow&&frames[k].contentWindow.postMessage({setMonth:''},location.origin);sel.open=false;renderSites();show();pushSite()};
+document.getElementById('sitetop').onclick=()=>{setTop(!topMode);if(topMode)sel.open=false};
+document.getElementById('siteclear').onclick=()=>{if(topMode)setTopQuiet();chosen.clear();renderSites();url();pushSite()};
 document.addEventListener('click',e=>{if(!sel.contains(e.target))sel.open=false});
-document.querySelectorAll('#sevfilters .fbtn').forEach(b=>b.onclick=()=>{
+document.querySelectorAll('#sevfilters .fbtn[data-s]').forEach(b=>b.onclick=()=>{
  const s=+b.dataset.s;
  if(sevs.has(s)){if(sevs.size>1)sevs.delete(s)}else sevs.add(s);
  show();
@@ -206,7 +220,7 @@ addEventListener('message',e=>{
  const f=String(e.data.src||'').indexOf('sev2')>-1?frames[2]:frames[1];
  if(e.data.embedH||e.data.sites){f.dataset.loaded='1';if(sevs.size===1&&f===frames[[...sevs][0]])skel.hidden=true}
  if(e.data.embedH)f.style.height=e.data.embedH+'px';
- if(e.data.sites){addSites(e.data.sites);f.contentWindow.postMessage({setSite:siteStr()},location.origin);document.getElementById('sitenote').hidden=!chosen.size||sevs.size===2}
+ if(e.data.sites){addSites(e.data.sites);f.contentWindow.postMessage({setSite:siteStr()},location.origin);if(month)f.contentWindow.postMessage({setMonth:month},location.origin);document.getElementById('sitenote').hidden=!chosen.size||sevs.size===2}
 });
 
 // ---- combined Sev1 + Sev2 view ----
@@ -252,7 +266,7 @@ function lazyCharts(draw){
 const BFL=['All','Dev case closed (Done / Resolved)','Closed without a fix','Still open','No dev case','Impact area: GO owned','Impact area: Customer owned'];
 function paintCombined(C){
  const pct=(a,b)=>b?(a/b*100).toFixed(1)+'%':'0.0%';
- $('#csub').textContent=`Sev1 and Sev2 incidents combined, 1 Jul 2026 to today, across the ${C.allSites.length} sites${chosen.size?' (filtered to '+[...chosen].join(', ')+')':''}. Peak start is assumed to be 23 Nov 2026.`;
+ $('#csub').textContent=`Sev1 and Sev2 incidents combined, ${month?document.getElementById('monthsel').selectedOptions[0].textContent:'1 Jul 2026 to today'}, across the ${topMode?'top 26':C.allSites.length} sites${chosen.size?' (filtered to '+[...chosen].join(', ')+')':''}. Peak start is assumed to be 23 Nov 2026.`;
  $('#ckpis').innerHTML=[[C.tot,'Sev1 + Sev2 tickets'],[C.s1,'Sev1'],[C.s2,'Sev2'],[C.bug+' ('+pct(C.bug,C.tot)+')','Software bug'],[C.nb+' ('+pct(C.nb,C.tot)+')','Non-bug'],[C.goN,'GO owned non-bug'],[C.cuN,'Customer owned non-bug']].map(k=>`<div class="kpi"><b>${k[0]}</b><span>${k[1]}</span></div>`).join('');
  $('#cstats').innerHTML=C.dtstats.map(g=>`<div class="stat wide"><b>${g.n} <span style="font-size:13px;font-weight:500">of ${C.tot} (${pct(g.n,C.tot)})</span></b><span>${esc(g.name)}</span><dl><div><dt>Cumulative downtime</dt><dd>${f2(g.sum)} h</dd></div><div><dt>Average per ticket</dt><dd>${f2(g.avg)} h</dd></div><div><dt>Max</dt><dd>${f2(g.max)} h ${g.maxt?`<em>${esc(g.maxt)}, ${esc(g.maxsite)}</em>`:''}</dd></div></dl><span class="meta">Downtime recorded for ${g.withdata} of ${g.n}</span></div>`).join('');
  const H=C.heat,mx=Math.max(1,...H.rows.flatMap(r=>r.slice(0,-1))),sub=H.cols.indexOf('Software bug subtotal (4 areas)'),ti=H.cols.length-1;
@@ -292,8 +306,8 @@ function paintCombined(C){
  $('#clive').textContent=`Live from Salesforce and Jira, refreshed ${new Date(C.generatedAt).toLocaleString()}.`+(C.unmapped.length?` Unmapped Technical Impacted Areas counted as Inconclusive: ${C.unmapped.join(', ')}.`:'');
 }
 async function loadCombined(retry=true){
- const seq=++cseq,to=new Date(Date.now()+(5.5/24+1)*86400000).toISOString().slice(0,10);
- const q=`?from=2026-07-01&to=${to}&scope=all`+siteQ();
+ const seq=++cseq,to=new Date(Date.now()+(5.5/24+1)*86400000).toISOString().slice(0,10),mr=monthRange(month);
+ const q=`?from=${mr?mr.from:'2026-07-01'}&to=${mr?mr.to:to}&scope=${scopeP()}`+siteQ();
  $('#clive').textContent='Loading live data from Salesforce and Jira\u2026';comb.classList.add('sk');
  try{
   const [r1,r2]=await Promise.all([fetch('/api/sev1-peak'+q),fetch('/api/sev2-peak'+q)]);
