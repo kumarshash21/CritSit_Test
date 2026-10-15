@@ -79,7 +79,7 @@ async function loadSev2Rows(from, to, sites) {
     let group = area === '(blank)' ? INPROGRESS : AREA_GROUP.get(area) || null;
     if (!group && !BUG_AREAS.has(area)) { unmapped.add(area); group = INCONCLUSIVE; }
     return {
-      t: ticketNo(c.CaseNumber), site: siteOf.get(c.Account_Name__c), area, dev, isBug, group,
+      t: ticketNo(c.CaseNumber), url: c.__caseUrl, site: siteOf.get(c.Account_Name__c), area, dev, isBug, group,
       subj: c.Subject || '', created: c.CreatedDate, solved: c.Status === 'Solved' || c.Status === 'Closed',
       opa: c.Operational_Impacted_Area__c || 'Not set', hrs: downtimeHrs(c),
     };
@@ -89,8 +89,9 @@ async function loadSev2Rows(from, to, sites) {
 
 function buildSev2Peak(all, from, to, site, sites) {
   const { unmapped } = all;
-  const rows = site ? all.rows.filter((r) => r.site === site) : all.rows;
-  const SITES = site ? sites.filter((s) => s.name === site) : sites;
+  const pick = new Set([].concat(site || []));
+  const rows = pick.size ? all.rows.filter((r) => pick.has(r.site)) : all.rows;
+  const SITES = pick.size ? sites.filter((s) => pick.has(s.name)) : sites;
   const bugs = rows.filter((r) => r.isBug);
   const nonBugs = rows.filter((r) => !r.isBug);
   const colOf = (r) => (r.isBug ? BUG_COL : r.group.col);
@@ -109,7 +110,7 @@ function buildSev2Peak(all, from, to, site, sites) {
     const st = f?.status?.name || '—';
     const inArea = BUG_AREAS.has(r.area);
     return {
-      t: r.t, site: r.site, area: r.area, subj: r.subj, proj: f?.project?.key || '—',
+      t: r.t, url: r.url, site: r.site, area: r.area, subj: r.subj, proj: f?.project?.key || '—',
       key: r.dev?.key || '—', st, out: r.dev ? outcome(st) : OUT_NODEV, dt: r2(r.hrs ?? 0),
       impg: inArea ? 'Software bug' : r.group.owner === 'go' ? 'GO owned' : r.group.owner === 'cu' ? 'Customer owned' : 'Not set',
       imp: inArea ? 'Software bug area' : r.group.col,
@@ -117,7 +118,7 @@ function buildSev2Peak(all, from, to, site, sites) {
   }).sort((a, b) => Number(a.t) - Number(b.t));
   const OWNER = { go: 'GO owned', cu: 'Customer owned', ip: 'In progress' };
   const nonbuglist = nonBugs.map((r) => ({
-    t: r.t, site: r.site, area: r.area, cat: r.group.col, owner: OWNER[r.group.owner], subj: r.subj,
+    t: r.t, url: r.url, site: r.site, area: r.area, cat: r.group.col, owner: OWNER[r.group.owner], subj: r.subj,
     st: r.solved ? 'Solved / Closed' : 'Open', dt: r.hrs == null ? null : r2(r.hrs),
   })).sort((a, b) => Number(a.t) - Number(b.t));
   const oc = count(buglist, (b) => b.out);
@@ -140,7 +141,7 @@ function buildSev2Peak(all, from, to, site, sites) {
   const lastCreated = rows.map((r) => r.created).sort().at(-1);
 
   return {
-    generatedAt: new Date().toISOString(), from, to, site: site || null, allSites: sites.map((x) => x.name), unmappedAreas: [...unmapped],
+    generatedAt: new Date().toISOString(), from, to, site: pick.size ? [...pick] : null, allSites: sites.map((x) => x.name), unmappedAreas: [...unmapped],
     lastDate: lastCreated ? istDate(lastCreated).toISOString().slice(0, 10) : null,
     tot: rows.length, bug: bugs.length, nb: nonBugs.length, goN, cuN: nonBugs.filter((r) => r.group.owner === 'cu').length,
     ipN: nonBugs.filter((r) => r.group.owner === 'ip').length,
@@ -180,7 +181,7 @@ function buildSev2Peak(all, from, to, site, sites) {
 const TTL_MS = 10 * 60 * 1000;
 const cache = new Map();
 export const isSev2Site = (name, all = false) => (all ? ALL_SITES : SEV2_SITES).some((s) => s.name === name);
-export async function getSev2Peak(from, to, { refresh = false, site = '', all = false } = {}) {
+export async function getSev2Peak(from, to, { refresh = false, site = [], all = false } = {}) {
   const sites = all ? ALL_SITES : SEV2_SITES;
   const f = from || DEFAULT_FROM;
   const t = to || new Date(Date.now() + IST_MS + 86400000).toISOString().slice(0, 10);

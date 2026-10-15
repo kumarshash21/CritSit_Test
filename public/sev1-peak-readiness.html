@@ -112,7 +112,7 @@ nav[role=tablist] button[aria-selected="true"]{border-bottom-color:#22c55e}
 <script>if(/[?&]embed=1/.test(location.search)){document.documentElement.classList.add('embed');document.write('<style>.embed .cs-topbar,.embed .cs-decor{display:none}.embed body{min-height:0}.embed header{padding-top:12px}</style>');addEventListener('load',()=>{const send=()=>parent.postMessage({embedH:document.body.offsetHeight+24,src:location.pathname},location.origin);new ResizeObserver(send).observe(document.body);send()})}</script>
 <script>if(/[?&]embed=1/.test(location.search)){addEventListener('load',()=>{
 let site='',raf=0,sent='';
-const txt=e=>e.textContent.trim(),match=c=>!site||txt(c)===site||txt(c).includes(site);
+const txt=e=>e.textContent.trim(),match=c=>!site||site.split('\n').some(s=>txt(c)===s||txt(c).includes(s));
 function apply(){
  document.querySelectorAll('table').forEach(t=>{
   let ci=-1;for(const r of t.rows){if(r.querySelector('th')){const i=[...r.cells].findIndex(c=>txt(c)==='Site');if(i>-1){ci=i;break}}}
@@ -150,7 +150,7 @@ apply();
 </head>
 <body class="sk">
 <div class="cs-decor" aria-hidden="true"><span class="cs-blob a"></span><span class="cs-blob b"></span><span class="cs-blob c"></span><span class="cs-gridbg"></span></div>
-<div class="cs-topbar"><div class="cs-brand"><img src="go-logo.jpg" alt="" width="34" height="34"><div><b>CritSit Dashboard</b><span>GreyOrange Service &middot; Live Operations</span></div></div><div class="cs-pills" role="navigation" aria-label="Primary"><a href="/">Home</a><a href="/software-stability">Software Stability</a><a href="/ticket-health">Ticket Health</a><a href="/sev1-peak-readiness" class="is-active">Sev 1 Peak Readiness</a><a href="/sev2-peak-readiness">Sev 2 Peak Readiness</a><a href="/sev-peak-readiness">Sev 1 &amp; Sev 2 Data</a></div><div class="cs-meta"><span class="cs-env"><i></i>Production</span><button class="cs-refresh" type="button" onclick="location.reload()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 11A8.1 8.1 0 0 0 4.5 9M4 5v4h4M4 13a8.1 8.1 0 0 0 15.5 2M20 19v-4h-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Refresh</span></button></div></div>
+<div class="cs-topbar"><div class="cs-brand"><img src="go-logo.jpg" alt="" width="34" height="34"><div><b>CritSit Dashboard</b><span>GreyOrange Service &middot; Live Operations</span></div></div><div class="cs-pills" role="navigation" aria-label="Primary"><a href="/">Home</a><a href="/software-stability">Software Stability</a><a href="/ticket-health">Ticket Health</a><a href="/sev1-peak-readiness" class="is-active">Sev 1 Peak Readiness</a><a href="/sev2-peak-readiness">Sev 2 Peak Readiness</a><a href="/sev-peak-readiness">CritSit Data</a></div><div class="cs-meta"><span class="cs-env"><i></i>Production</span><button class="cs-refresh" type="button" onclick="location.reload()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 11A8.1 8.1 0 0 0 4.5 9M4 5v4h4M4 13a8.1 8.1 0 0 0 15.5 2M20 19v-4h-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Refresh</span></button></div></div>
 <header>
 <h1>Site-wise breakdown of Sev1 cases</h1>
 <p class="sub" id="subtxt">Sev1 incidents from 1 Jul to 30 Sep 2026 across the 26 peak-planning sites. Peak start is assumed to be 23 Nov 2026.</p>
@@ -206,7 +206,7 @@ function paintText(){
 const dayAfter=n=>new Date(Date.now()+(5.5/24+n)*86400000).toISOString().slice(0,10); // IST date + n days
 const RANGES={sep30:{to:'2026-10-01',label:'30 Sep 2026'},now:{label:'today'}};
 let rng='now',loadSeq=0;
-let siteSel=new URLSearchParams(location.search).get('site')||'';
+let siteSel=new URLSearchParams(location.search).getAll('site').filter(Boolean).join('\n');
 const ALLSC=new URLSearchParams(location.search).get('scope')==='all';
 window.__setSite=x=>{if(x!==siteSel){siteSel=x;loadLive()}};
 async function loadLive(retry=true){
@@ -214,7 +214,7 @@ async function loadLive(retry=true){
  $('#subtxt').textContent=`Sev1 incidents from 1 Jul 2026 to ${R.label} across the ${ALLSC?'78 sites':'26 peak-planning sites'}. Peak start is assumed to be 23 Nov 2026.`;
  el.textContent='Loading live data from Salesforce\u2026';document.body.classList.add('sk');
  try{
-  const r=await fetch('/api/sev1-peak?from=2026-07-01&to='+to+(siteSel?'&site='+encodeURIComponent(siteSel):'')+(ALLSC?'&scope=all':''));if(!r.ok)throw new Error((await r.json().catch(()=>({}))).error||r.status);
+  const r=await fetch('/api/sev1-peak?from=2026-07-01&to='+to+(siteSel?siteSel.split('\n').map(x=>'&site='+encodeURIComponent(x)).join(''):'')+(ALLSC?'&scope=all':''));if(!r.ok)throw new Error((await r.json().catch(()=>({}))).error||r.status);
   const L=await r.json();if(seq!==loadSeq)return;
   ['dtstats','ownerbars','goN','cuN','ipN','sitebar','tot','bug','nb','cf','bs','heat','bugbar','gm','buglist','nonbuglist'].concat('allSites').forEach(k=>{D[k]=L[k]});
   paintTop();paintBugs();paintNonBugs();render();

@@ -332,9 +332,9 @@ app.get('/api/sev1-peak', async (req, res) => {
     if ((from && !iso.test(from)) || (to && !iso.test(to))) {
       return res.status(400).json({ error: 'from/to must be YYYY-MM-DD (to is exclusive)' });
     }
-    const site = req.query.site || '';
+    const site = [].concat(req.query.site || []).filter((x) => typeof x === 'string' && x);
     const all = req.query.scope === 'all';
-    if (site && !isSev1Site(site, all)) return res.status(400).json({ error: 'unknown site' });
+    if (site.some((x) => !isSev1Site(x, all))) return res.status(400).json({ error: 'unknown site' });
     res.json(await getSev1Peak(from, to, { refresh: req.query.refresh === '1', site, all }));
   } catch (err) {
     console.error(err);
@@ -349,9 +349,9 @@ app.get('/api/sev2-peak', async (req, res) => {
     if ((from && !iso.test(from)) || (to && !iso.test(to))) {
       return res.status(400).json({ error: 'from/to must be YYYY-MM-DD (to is exclusive)' });
     }
-    const site = req.query.site || '';
+    const site = [].concat(req.query.site || []).filter((x) => typeof x === 'string' && x);
     const all = req.query.scope === 'all';
-    if (site && !isSev2Site(site, all)) return res.status(400).json({ error: 'unknown site' });
+    if (site.some((x) => !isSev2Site(x, all))) return res.status(400).json({ error: 'unknown site' });
     res.json(await getSev2Peak(from, to, { refresh: req.query.refresh === '1', site, all }));
   } catch (err) {
     console.error(err);

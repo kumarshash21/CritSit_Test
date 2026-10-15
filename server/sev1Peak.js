@@ -106,7 +106,7 @@ async function loadSev1Rows(from, to, sites) {
       if (!group) { unmapped.add(area); group = INCONCLUSIVE; }
     }
     return {
-      t: ticketNo(c.CaseNumber), site: siteOf.get(c.Account_Name__c), area, isBug, group,
+      t: ticketNo(c.CaseNumber), url: c.__caseUrl, site: siteOf.get(c.Account_Name__c), area, isBug, group,
       hrs: c.Downtime__c == null ? null : c.Downtime__c / 60, // Downtime__c is in minutes
       jira: jiraById.get(String(c.Jira_Ticket_Id__c)),
     };
@@ -117,8 +117,9 @@ async function loadSev1Rows(from, to, sites) {
 
 function buildSev1Peak(all, from, to, site, sites) {
   const { unmapped } = all;
-  const rows = site ? all.rows.filter((r) => r.site === site) : all.rows;
-  const SITES = site ? sites.filter((s) => s.name === site) : sites;
+  const pick = new Set([].concat(site || []));
+  const rows = pick.size ? all.rows.filter((r) => pick.has(r.site)) : all.rows;
+  const SITES = pick.size ? sites.filter((s) => pick.has(s.name)) : sites;
 
   // Heatmap
   const heatRows = SITES.map((s) => {
@@ -132,14 +133,14 @@ function buildSev1Peak(all, from, to, site, sites) {
 
   // Bug list (Jira classification)
   const buglist = bugs.map((r) => ({
-    t: r.t, site: r.site, area: r.area, ...classify(r.jira),
+    t: r.t, url: r.url, site: r.site, area: r.area, ...classify(r.jira),
   })).sort((a, b) => Number(b.t) - Number(a.t));
   // Non-bug list: category = merged heatmap column, plus Jira dev case fields where one exists.
   const OWNER = { go: 'GO owned', cu: 'Customer owned', ip: 'In progress' };
   const nonbuglist = nonBugs.map((r) => {
     const f = r.jira?.fields;
     return {
-      t: r.t, site: r.site, area: r.area, cat: r.group.col, owner: OWNER[r.group.owner],
+      t: r.t, url: r.url, site: r.site, area: r.area, cat: r.group.col, owner: OWNER[r.group.owner],
       gm: r.jira ? f.customfield_10600?.value || NO_GM_TEAM : '—', key: r.jira?.key || '—',
       st: f?.status?.name || '—', res: f?.resolution?.name || '—',
       dt: r.hrs == null ? null : r2(r.hrs),
@@ -161,7 +162,7 @@ function buildSev1Peak(all, from, to, site, sites) {
 
   const withSev1 = SITES.map((s, i) => ({ s, i })).filter(({ i }) => heatRows[i].at(-1) > 0);
   return {
-    generatedAt: new Date().toISOString(), from, to, site: site || null, allSites: sites.map((x) => x.name), unmappedAreas: [...unmapped],
+    generatedAt: new Date().toISOString(), from, to, site: pick.size ? [...pick] : null, allSites: sites.map((x) => x.name), unmappedAreas: [...unmapped],
     tot: rows.length, bug: bugs.length, nb: nonBugs.length, goN, cuN, ipN,
     dtstats: [
       downtimeStats('Software bug', bugs),
@@ -189,7 +190,7 @@ function buildSev1Peak(all, from, to, site, sites) {
 const TTL_MS = 10 * 60 * 1000;
 const cache = new Map();
 export const isSev1Site = (name, all = false) => (all ? ALL_SITES : SEV1_SITES).some((s) => s.name === name);
-export async function getSev1Peak(from, to, { refresh = false, site = '', all = false } = {}) {
+export async function getSev1Peak(from, to, { refresh = false, site = [], all = false } = {}) {
   const sites = all ? ALL_SITES : SEV1_SITES;
   const f = from || DEFAULT_FROM;
   const t = to || DEFAULT_TO;

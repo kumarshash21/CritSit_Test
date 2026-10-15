@@ -417,7 +417,7 @@ export async function getTrendDayDetail(dateStr, timeZone = 'UTC') {
  */
 async function getPeakCases(severity, startDate, endDate, accounts, { minImpact, extraFields = [] } = {}) {
   const fields = [
-    'CaseNumber', 'CreatedDate', 'Account_Name__c', 'Technical_Impacted_Area__c',
+    'Id', 'CaseNumber', 'CreatedDate', 'Account_Name__c', 'Technical_Impacted_Area__c',
     'Downtime__c', 'Jira_Ticket_Id__c', ...extraFields,
   ];
   const soql =
@@ -435,6 +435,7 @@ async function getPeakCases(severity, startDate, endDate, accounts, { minImpact,
     records.push(...(result.records || []));
     nextPath = result.nextRecordsUrl || null;
   }
+  for (const r of records) r.__caseUrl = `${SF_INSTANCE_URL}/lightning/r/Case/${r.Id}/view`;
   console.log(`[salesforce] ${severity} peak cases fetched (${records.length})`);
   return records;
 }
