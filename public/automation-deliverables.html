@@ -1,0 +1,675 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Automation Deliverables &middot; CritSit Dashboard</title>
+  <link rel="icon" type="image/jpeg" href="go-logo.jpg" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="bg-decor" aria-hidden="true">
+    <span class="blob blob-a"></span>
+    <span class="blob blob-b"></span>
+    <span class="blob blob-c"></span>
+    <span class="bg-grid"></span>
+    <span class="bg-vignette"></span>
+  </div>
+
+  <header class="topbar">
+    <div class="topbar-title">
+      <span class="brand-mark">
+        <img src="go-logo.jpg" alt="" width="34" height="34" />
+      </span>
+      <div class="title-block">
+        <h1>CritSit Dashboard</h1>
+        <span class="subtitle">GreyOrange Service &middot; Live Operations</span>
+      </div>
+    </div>
+    <nav class="page-nav" aria-label="Primary">
+      <a href="/" class="page-nav-link">Home</a>
+      <a href="/software-stability" class="page-nav-link">Software Stability</a>
+      <a href="/ticket-health" class="page-nav-link">Ticket Health</a>
+      <!-- <a href="/sev1-peak-readiness" class="page-nav-link">Sev 1 Peak Readiness</a> -->
+      <!-- <a href="/sev2-peak-readiness" class="page-nav-link">Sev 2 Peak Readiness</a> -->
+      <a href="/sev-peak-readiness" class="page-nav-link">CritSit Data</a>
+      <a href="/automation-deliverables" class="page-nav-link is-active">Automation Deliverables</a>
+    </nav>
+    <div class="topbar-meta">
+      <span class="env-pill">
+        <span class="env-dot" aria-hidden="true"></span>
+        Production
+      </span>
+      <button id="refreshBtn" class="refresh-btn" type="button" onclick="location.reload()">
+        <svg class="refresh-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M20 11A8.1 8.1 0 0 0 4.5 9M4 5v4h4M4 13a8.1 8.1 0 0 0 15.5 2M20 19v-4h-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>Refresh</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="shell">
+    <div class="ad-head">
+      <h2>Automation Deliverables</h2>
+      <p class="subtitle">Open Admin Queue cases (Feature Request, Tool Migration, New Tool Request, Integration/Automation) from the team's Salesforce list views, grouped by ticket type. <span id="adStamp"></span></p>
+    </div>
+    <div id="adTop"></div>
+    <div id="adSections" class="ad-sections" aria-busy="true"></div>
+  </main>
+  <div id="adModal" class="ad-modal" hidden></div>
+  <div id="adTip" class="ad-tip" hidden></div>
+  <style>
+    .ad-head h2 { margin: 0 0 4px; }
+    .ad-sections { display: grid; gap: 20px; margin-top: 20px; }
+    .ad-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px 22px; box-shadow: var(--shadow-md); }
+    .ad-card h3 { margin: 0 0 14px; display: flex; align-items: baseline; gap: 10px; }
+    .ad-card h3 small { color: var(--text-secondary); font-weight: 400; font-size: 13px; }
+    .ad-body { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
+    .ad-summary { display: flex; flex-direction: column; align-items: center; gap: 16px; flex: none; }
+    .ad-summary .ad-legend { align-self: stretch; }
+    .ad-summary .ad-legend li.sub { max-width: none; }
+    .ad-ring { position: relative; width: 150px; height: 150px; flex: none; }
+    .ad-ring svg { transform: rotate(-90deg); }
+    .ad-ring-c { pointer-events: none; position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .ad-ring-c b { font-size: 30px; line-height: 1; }
+    .ad-ring-c span { font-size: 11px; color: var(--text-secondary); letter-spacing: .08em; }
+    .ad-legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; align-self: center; }
+    .ad-legend li { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+    .ad-legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .ad-legend li.sub { font-size: 12px; color: var(--text-secondary); max-width: 190px; }
+    .ad-legend em { margin-left: auto; padding-left: 18px; font-style: normal; font-variant-numeric: tabular-nums; }
+    .ad-tabbed { flex: 1 1 420px; min-width: 0; }
+    .ad-tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+    .ad-tab { background: none; border: 0; border-bottom: 3px solid transparent; color: var(--text-secondary); padding: 8px 14px; font-size: 14px; cursor: pointer; margin-bottom: -1px; }
+    .ad-tab span { margin-left: 4px; padding: 1px 8px; border-radius: 999px; font-size: 12px; background: rgba(255,255,255,.08); }
+    .ad-tab[aria-selected="true"] { color: var(--text-primary); border-bottom-color: var(--tc); }
+    .ad-tab[aria-selected="true"] span { background: var(--tc); color: #fff; }
+    .ad-table { flex: 1 1 360px; min-width: 0; overflow-x: auto; }
+    .ad-table table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .ad-table th, .ad-table td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); }
+    .ad-table th { color: var(--text-secondary); font-weight: 500; }
+    .ad-table td.subj { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ad-table td { white-space: nowrap; }
+    .ad-prog { margin: 0 0 18px; padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--radius-md); }
+    .ad-prog-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; margin-bottom: 10px; }
+    .ad-prog-h b { font-size: 26px; line-height: 1; }
+    .ad-prog-h span { color: var(--text-secondary); font-size: 13px; }
+    .ad-prog-bar { display: flex; height: 14px; border-radius: 7px; overflow: hidden; background: rgba(255,255,255,.1); }
+    .ad-prog-bar button { border: 0; padding: 0; cursor: pointer; height: 100%; }
+    .ad-prog-tools { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px 22px; margin-top: 14px; }
+    .ad-prog-tool { font-size: 12px; color: var(--text-secondary); }
+    button.ad-prog-tool { background: none; border: 0; padding: 4px 6px; margin: -4px -6px; text-align: left; font: inherit; cursor: pointer; border-radius: 6px; }
+    button.ad-prog-tool:hover { background: rgba(255,255,255,.06); color: var(--text-primary); }
+    .ad-prog-tool div { display: flex; justify-content: space-between; margin-bottom: 3px; }
+    .ad-prog-tool .ad-prog-bar { height: 6px; border-radius: 3px; }
+    .ad-prog-rings { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin-top: 16px; }
+    .ad-prog-ring { background: rgba(255,255,255,.02); border: 1px solid var(--border); padding: 16px 14px; font: inherit; color: var(--text-secondary); cursor: pointer; border-radius: var(--radius-md); display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 190px; }
+    .ad-prog-ring:hover { background: rgba(255,255,255,.06); border-color: var(--border-strong); }
+    .ad-prog-ring strong { color: var(--text-primary); font-size: 14px; }
+    .ad-prog-ring span { font-size: 12px; }
+    .ad-ring-s { position: relative; width: 104px; height: 104px; }
+    .ad-ring-s svg { transform: rotate(-90deg); }
+    .ad-ring-s .ad-ring-c b { font-size: 20px; color: var(--text-primary); }
+    .ad-ring-s .ad-ring-c span { font-size: 9px; letter-spacing: .04em; margin-top: 2px; }
+    .ad-cnt { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+    .ad-cnt:hover { color: var(--text-primary); }
+    .ad-drs { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin: 0 0 18px; }
+    .ad-dr { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 16px 14px; border: 1px solid var(--border); border-radius: var(--radius-md); background: rgba(255,255,255,.02); }
+    .ad-dr > strong { font-size: 14px; }
+    .ad-dr ul { list-style: none; margin: 0; padding: 0; width: 100%; display: grid; gap: 6px; }
+    .ad-dr li { display: grid; grid-template-columns: 8px 1fr auto 40px; align-items: center; gap: 8px; font-size: 12px; color: var(--text-secondary); }
+    .ad-dr li i { width: 8px; height: 8px; border-radius: 50%; }
+    .ad-dr li b { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+    .ad-dr li em { font-style: normal; text-align: right; font-variant-numeric: tabular-nums; }
+    .ad-dr p { margin: 0; padding-top: 10px; width: 100%; text-align: center; border-top: 1px solid var(--border); font-size: 12px; color: var(--text-secondary); }
+    .ad-bar { display: inline-block; vertical-align: middle; width: 120px; height: 8px; border-radius: 4px; background: rgba(255,255,255,.1); overflow: hidden; }
+    .ad-bar i { display: block; height: 100%; border-radius: 4px; }
+    .ad-pct { display: inline-block; min-width: 70px; margin-left: 8px; font-size: 12px; font-variant-numeric: tabular-nums; }
+    .ad-pause { margin-left: 6px; font-size: 11px; color: var(--text-secondary); border: 1px solid var(--border-strong); border-radius: 6px; padding: 1px 5px; }
+    .ad-bw { margin-top: 20px; }
+    .ad-card h3 .sla { margin-left: auto; font-size: 12px; color: var(--text-secondary); font-weight: 400; }
+    .ad-note { color: var(--text-secondary); font-size: 12px; margin: 12px 0 0; }
+    .ad-empty { color: var(--text-secondary); font-size: 13px; padding: 30px 0; }
+    .ad-filter { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 18px; }
+    .ad-filter span { font-size: 12px; color: var(--text-secondary); letter-spacing: .08em; text-transform: uppercase; margin-right: 4px; }
+    .ad-chip { background: transparent; color: var(--text-secondary); border: 1px solid var(--border-strong); border-radius: 999px; padding: 4px 12px; font-size: 13px; cursor: pointer; }
+    .ad-select { background: transparent; color: var(--text-secondary); border: 1px solid var(--border-strong); border-radius: 999px; padding: 4px 12px; font-size: 13px; cursor: pointer; }
+    .ad-select option { color: #111; }
+    .ad-select[aria-pressed="true"] { color: #fff; background: var(--secondary); border-color: var(--secondary); }
+    .ad-chip b { margin-left: 4px; font-weight: 500; opacity: .75; }
+    .ad-typebar { margin-top: 20px; }
+    .ad-chip[aria-pressed="true"] { color: #fff; background: var(--secondary); border-color: var(--secondary); }
+    .ad-people { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+    .ad-person { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; background: var(--surface-2); }
+    .ad-person header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+    .ad-person header b { font-size: 15px; }
+    .ad-person header span { font-size: 12px; color: var(--text-secondary); }
+    .ad-stack { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: rgba(255,255,255,.08); }
+    .ad-stack i { display: block; height: 100%; }
+    .ad-person p { margin: 8px 0 0; font-size: 12px; color: var(--text-secondary); display: flex; justify-content: space-between; gap: 8px; }
+    .ad-lb { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-top: 16px; }
+    .ad-lb ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+    .ad-lb li { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+    .ad-lb li .rk { width: 24px; height: 24px; border-radius: 50%; background: var(--surface); display: inline-flex; align-items: center; justify-content: center; font-size: 12px; flex: none; }
+    .ad-lb li em { margin-left: auto; font-style: normal; font-size: 12px; color: var(--text-secondary); text-align: right; }
+    .ad-table .g { color: #22c55e; }
+    .ad-table .r { color: #ef4444; }
+    .ad-table .y { color: #f59e0b; }
+    .ad-line { border-bottom: 1px solid var(--border); }
+    .ad-line.is-total { background: rgba(255,255,255,.03); border-radius: var(--radius-sm); margin-bottom: 4px; }
+    .ad-line-r { display: grid; grid-template-columns: 190px 1fr; align-items: center; gap: 14px; padding: 12px 10px; font-size: 14px; }
+    .ad-scale { display: flex; height: 18px; border-radius: 9px; overflow: hidden; background: rgba(255,255,255,.08); }
+    .ad-scale .seg { border: 0; padding: 0; height: 100%; cursor: pointer; transition: filter .15s, opacity .15s; }
+    .ad-scale .seg + .seg { border-left: 2px solid var(--card); }
+    .ad-scale .seg:hover { filter: brightness(1.2); }
+    .ad-scale:has(.seg.on) .seg:not(.on) { opacity: .4; }
+    .ad-tip { position: fixed; z-index: 60; pointer-events: none; background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); padding: 8px 12px; font-size: 13px; line-height: 1.5; box-shadow: var(--shadow-lg); max-width: 220px; }
+    .ad-ring circle[data-tip], .ad-ring-s circle[data-tip] { transition: filter .15s; }
+    .ad-ring circle[data-tip]:hover, .ad-ring-s circle[data-tip]:hover { filter: brightness(1.25); }
+    .ad-tip small { color: var(--text-secondary); }
+    .ad-modal { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .ad-modal[hidden], .ad-tip[hidden] { display: none; }
+    .ad-pop { background: var(--card); border: 1px solid var(--border-strong); border-radius: var(--radius-md); width: min(980px, 100%); max-height: 82vh; display: flex; flex-direction: column; box-shadow: var(--shadow-lg); overflow: hidden; }
+    .ad-pop header { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-top: 4px solid; border-bottom: 1px solid var(--border); font-size: 16px; }
+    .ad-pop header small { margin-left: 12px; color: var(--text-secondary); font-size: 13px; }
+    .ad-x { background: none; border: 0; color: var(--text-secondary); font-size: 28px; line-height: 1; cursor: pointer; }
+    .ad-x:hover { color: var(--text-primary); }
+    .ad-pop-b { overflow: auto; padding: 4px 20px 16px; }
+    .ad-pop-b table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .ad-pop-b th, .ad-pop-b td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    .ad-pop-b th { color: var(--text-secondary); font-weight: 500; position: sticky; top: 0; background: var(--card); }
+    .ad-pop-b td.sj { white-space: normal; min-width: 240px; }
+    .ad-pop-b a { color: var(--secondary); text-decoration: none; }
+    @media (max-width: 640px) { .ad-line-r { grid-template-columns: 1fr; gap: 6px; } }
+    .ad-legend-row { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; }
+    .ad-legend-row i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+    .ad-legend-row em { margin-left: auto; font-style: normal; }
+    .ad-table a { color: var(--secondary); text-decoration: none; }
+    /* Skeleton placeholders: mirror the real layout (period chips, section cards with ring + tabs + table, delivery rings) */
+    @keyframes ad-shimmer { 100% { transform: translateX(100%); } }
+    .sk { position: relative; overflow: hidden; background: rgba(255,255,255,.08); border-radius: 6px; }
+    .sk::after { content: ''; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, rgba(255,255,255,.12), transparent); animation: ad-shimmer 1.4s infinite; }
+    @media (prefers-reduced-motion: reduce) { .sk::after { animation: none; } }
+    .sk-line { height: 12px; }
+    .sk-pill { height: 28px; width: 110px; border-radius: 999px; }
+    .sk-circle { border-radius: 50%; }
+    .sk-ring { width: 150px; height: 150px; border-radius: 50%; -webkit-mask: radial-gradient(circle, transparent 51px, #000 52px); mask: radial-gradient(circle, transparent 51px, #000 52px); }
+    .sk-ring-s { width: 104px; height: 104px; border-radius: 50%; -webkit-mask: radial-gradient(circle, transparent 34px, #000 35px); mask: radial-gradient(circle, transparent 34px, #000 35px); }
+    .sk-tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--border); margin-bottom: 8px; padding-bottom: 9px; }
+    .sk-tabs .sk { height: 18px; width: 100px; }
+    .sk-tr { display: grid; grid-template-columns: 90px 2.2fr 1fr .8fr .8fr 60px 60px 1.2fr; gap: 14px; padding: 12px 10px; border-bottom: 1px solid var(--border); }
+    .sk-tr .sk { height: 11px; }
+    .sk-tr:first-child .sk { opacity: .6; }
+    .sk-prog { margin: 0 0 18px; padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--radius-md); }
+    .sk-prog .sk-bar { height: 14px; border-radius: 7px; margin-top: 12px; }
+    .sk-prog .ad-prog-rings .sk-ring-s { margin: 0 auto 8px; }
+    .ad-lazy { min-height: 120px; }
+  </style>
+  <script>
+    const STATUSES = [
+      ['New', '#3b82f6'],
+      ['Assigned', '#f59e0b'],
+      ['In-Progress', '#22c55e'],
+      ['Other', '#6b7280'], // On Hold, Pending Confirmation, etc.,
+    ];
+    // Always show these even when the queue has none of them right now.
+    const ALWAYS = ['Feature Request', 'Tool Migration', 'New Tool Request', 'Integration/Automation'];
+
+    // SLA in days per ticket type. New Tool Request wasn't specified; it follows Tool Migration.
+    const SLA_DAYS = { 'Feature Request': 3, 'New Tool Request': 7, 'Integration/Automation': 30 }; // Tool Migration has no SLA
+    const DAY = 864e5;
+    const fmtD = (d) => (d < 10 ? d.toFixed(1) : Math.round(d)) + 'd';
+    const slaOf = (c) => {
+      if (!SLA_DAYS[c.type] && c.type === 'Tool Migration') return { used: c.activeMs / DAY, total: 0, pct: 0, over: false, none: true };
+      const used = c.activeMs / DAY, total = SLA_DAYS[c.type] || 7;
+      return { used, total, pct: used / total, over: used > total };
+    };
+    const hasBacklog = (type) => type !== 'Tool Migration'; // Tool Migration has no backlog
+    const barColor = (p) => (p >= 1 ? '#ef4444' : p >= 0.7 ? '#f59e0b' : '#22c55e');
+
+    const esc = (v) => String(v ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const bucket = (status) => (STATUSES.some(([n]) => n === status) ? status : 'Other');
+    const ageOf = (iso) => {
+      const h = (Date.now() - new Date(iso)) / 36e5;
+      return h < 48 ? Math.max(0, Math.round(h)) + 'h' : Math.round(h / 24) + 'd';
+    };
+
+    function ring(groups, total, name) {
+      const r = 60, c = 2 * Math.PI * r;
+      let off = 0;
+      const arcs = total ? groups.map(([lbl, col, n]) => {
+        const len = (n / total) * c;
+        const a = len ? `<circle data-tip="${esc(name)}|${lbl}|${n}|${total}|${col}|0" cx="75" cy="75" r="${r}" fill="none" stroke="${col}" stroke-width="16" stroke-dasharray="${len} ${c - len}" stroke-dashoffset="${-off}"/>` : '';
+        off += len;
+        return a;
+      }).join('') : '';
+      return `<div class="ad-ring"><svg width="150" height="150" viewBox="0 0 150 150"><circle cx="75" cy="75" r="${r}" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="16"/>${arcs}</svg>
+        <div class="ad-ring-c"><b>${total}</b><span>OPEN</span></div></div>`;
+    }
+
+    function slaCell(c) {
+      const { used, total, pct, over, none } = slaOf(c);
+      if (none) return `<span class="ad-pct">No SLA</span>${c.paused ? '<span class="ad-pause">paused</span>' : ''}`;
+      const w = Math.min(100, pct * 100);
+      const label = over ? `${fmtD(used - total)} over` : `${fmtD(used)} / ${total}d`;
+      return `<span class="ad-bar" title="${fmtD(used)} active of ${total}d SLA"><i style="width:${w}%;background:${barColor(pct)}"></i></span><span class="ad-pct" style="color:${over ? '#ef4444' : 'inherit'}">${label}</span>${c.paused ? '<span class="ad-pause">paused</span>' : ''}`;
+    }
+
+    // Health: breached (past SLA) > paused (on hold/pending) > at risk (70%+ used) > on track.
+    const HEALTH = [
+      ['on', 'On track', '#22c55e'],
+      ['risk', 'At risk', '#f59e0b'],
+      ['breach', 'Breached', '#ef4444'],
+      ['paused', 'Paused', '#6b7280'],
+    ];
+    const healthOf = (c) => {
+      const { pct, over } = slaOf(c);
+      return over ? 'breach' : c.paused ? 'paused' : pct >= 0.7 ? 'risk' : 'on';
+    };
+    const HCOL = Object.fromEntries(HEALTH.map(([k, , col]) => [k, col]));
+    const overDays = (c) => Math.max(0, slaOf(c).used - slaOf(c).total);
+
+    let DATA = null;
+    let ticketsOfFn = null, segMeta = null; // set by overview() for the popup
+    let TOOL_POP = null; // { type, tool } of the clicked tool type in the progress card
+    let SEL = null; // { name, key } of the clicked bar segment, kept across the 60s refresh
+    let FILTER = 'all'; // all | on | risk | breach | paused
+
+    // Everything received so far (solved + still open), per owner, as a 100% bar: green = solved.
+    function overview(cases) {
+      const COLS = ['In-Progress', 'Assigned', 'New', 'On Hold', 'Pending Confirmation'];
+      const by = new Map();
+      const row = (o) => { if (!by.has(o)) by.set(o, { o, solved: 0, all: 0, st: Object.fromEntries(COLS.map((k) => [k, 0])) }); return by.get(o); };
+      cases.forEach((c) => { const x = row(c.owner || 'Unassigned'); x.all++; if (c.status in x.st) x.st[c.status]++; });
+      (DATA.resolved || []).forEach((r) => { row(r.owner || 'Unassigned').solved++; });
+      const rows = [...by.values()];
+      // "Still open" is only the active work (In-Progress + Assigned + New); On Hold and Pending Confirmation are tracked separately.
+      rows.forEach((x) => { x.open = x.st['In-Progress'] + x.st.Assigned + x.st.New; });
+      rows.sort((a, b) => b.all + b.solved - (a.all + a.solved) || a.o.localeCompare(b.o));
+      const sum = (f) => rows.reduce((a, x) => a + f(x), 0);
+      const SEG = [
+        ['solved', 'Solved', '#22c55e'],
+        ['open', 'Still open', '#3b82f6'],
+        ['hold', 'On Hold (Backlog)', '#ef4444'],
+        ['pend', 'Pending Confirmation', '#f59e0b'],
+      ];
+      const KEYS = {
+        solved: (t) => t.solved,
+        open: (t) => !t.solved && ['In-Progress', 'Assigned', 'New'].includes(t.status),
+        hold: (t) => !t.solved && t.status === 'On Hold',
+        pend: (t) => !t.solved && t.status === 'Pending Confirmation',
+      };
+      const ticketsOf = (owner, key) => [
+        ...(DATA.resolved || []).map((r) => ({ ...r, solved: true })),
+        ...cases,
+      ].filter((t) => (owner == null || (t.owner || 'Unassigned') === owner) && KEYS[key](t));
+      const line = (name, x, bold) => {
+        const total = x.solved + x.all || 1;
+        const p = { solved: x.solved, open: x.open, hold: x.st['On Hold'], pend: x.st['Pending Confirmation'] };
+        const segs = SEG.map(([k, l, c]) => p[k] ? `<button type="button" class="seg${SEL && SEL.name === name && SEL.key === k ? ' on' : ''}" data-seg="${k}" data-name="${esc(name)}" data-tip="${esc(name)}|${l}|${p[k]}|${total}|${c}" style="width:${(p[k] / total) * 100}%;background:${c}"></button>` : '').join('');
+        return `<div class="ad-line${bold ? ' is-total' : ''}"><div class="ad-line-r"><b>${esc(name)}</b><div class="ad-scale">${segs}</div></div></div>`;
+      };
+      ticketsOfFn = ticketsOf; segMeta = SEG;
+      const teamRow = { solved: sum((x) => x.solved), all: sum((x) => x.all), open: sum((x) => x.open), st: Object.fromEntries(COLS.map((k) => [k, sum((y) => y.st[k])])) };
+      const legend = SEG.map(([, l, c]) => `<span><i style="background:${c}"></i>${l}</span>`).join('');
+      return `<section class="ad-card ad-bw"><h3>All tickets received till date <small>${teamRow.solved} solved &middot; ${teamRow.open} still open &middot; ${teamRow.st['On Hold']} backlog &middot; ${teamRow.st['Pending Confirmation']} pending confirmation</small></h3>
+        <div class="ad-legend-row">${legend}<em>Each line is 100% of that person's received tickets &middot; hover a colour for numbers, click for the tickets</em></div>
+        ${line('Team total', teamRow, true)}${rows.map((x) => line(x.o, x)).join('')}
+        <p class="ad-note">Received = solved + still open + on hold + pending confirmation, counted for each ticket's current owner. Still open = In-Progress + Assigned + New only. Covers Feature Request (Automation Form), Tool Migration, New Tool Request and Integration/Automation.</p></section>`;
+    }
+
+    // Per owner: tickets waiting on confirmation (open) vs tickets already resolved.
+    let BANDWIDTH = '';
+    function delivery(cases) {
+      const since30 = Date.now() - 30 * DAY;
+      const by = new Map();
+      const blank = (o) => ({ o, pend: 0, open: 0, back: 0, r30: 0, rAll: 0 });
+      ALWAYS.forEach((t) => by.set(t, blank(t)));
+      const row = (o) => { if (!by.has(o)) by.set(o, blank(o)); return by.get(o); };
+      // Each open ticket lands in exactly one bucket: pending confirmation, else backlog (On Hold or SLA breached), else open (being worked).
+      cases.forEach((c) => {
+        const x = row(c.type);
+        if (c.status === 'Pending Confirmation') x.pend++;
+        else if (hasBacklog(c.type) && (c.status === 'On Hold' || healthOf(c) === 'breach')) x.back++;
+        else x.open++;
+      });
+      (DATA.resolved || []).forEach((r) => {
+        const x = row(r.type);
+        x.rAll++;
+        if (new Date(r.solvedAt) >= since30) x.r30++;
+      });
+      const rows = [...by.values()].sort((a, b) => (ALWAYS.indexOf(a.o) + 1 || 99) - (ALWAYS.indexOf(b.o) + 1 || 99));
+      const tot = rows.reduce((a, x) => ({ pend: a.pend + x.pend, open: a.open + x.open, back: a.back + x.back, r30: a.r30 + x.r30, rAll: a.rAll + x.rAll }), blank('Total'));
+      const SEGS = [['rAll', 'Resolved', '#22c55e'], ['pend', 'Pending confirmation', '#f59e0b'], ['open', 'Open', '#64748b'], ['back', 'Backlog', '#ef4444']];
+      const sum4 = (x) => x.rAll + x.pend + x.open + x.back;
+      const openAll = (x) => x.open + x.back; // Open tickets = open + backlog
+      const pctOf = (x, k) => { const t = sum4(x); return t ? Math.round((x[k] / t) * 100) : 0; };
+      const dRing = (label, x) => {
+        const t = sum4(x), r = 40, c = 2 * Math.PI * r;
+        let off = 0;
+        const arc = (nm, n, col, start, len) => len ? `<circle data-tip="${esc(label)}|${nm}|${n}|${t}|${col}|0" cx="52" cy="52" r="${r}" fill="none" stroke="${col}" stroke-width="12" stroke-dasharray="${len} ${c - len}" stroke-dashoffset="${-start}"/>` : '';
+        const L = (n) => (n / (t || 1)) * c;
+        // Open = open + backlog (as in the legend); the red backlog arc sits on the tail of the Open arc.
+        const arcs = arc('Resolved', x.rAll, '#22c55e', 0, L(x.rAll))
+          + arc('Pending confirmation', x.pend, '#f59e0b', L(x.rAll), L(x.pend))
+          + arc('Open (incl. backlog)', openAll(x), '#64748b', L(x.rAll + x.pend), L(openAll(x)))
+          + arc('Backlog (part of Open)', x.back, '#ef4444', L(x.rAll + x.pend + x.open), L(x.back));
+        const legend = SEGS.map(([k, l, col]) => k === 'open' ? `<li><i style="background:${col}"></i><span>Open</span><b>${openAll(x)}</b><em>${t ? Math.round((openAll(x) / t) * 100) : 0}%</em></li>` : k === 'back' ? `<li style="padding-left:14px"><span style="grid-column:1/3">incl. backlog</span><b>${x.back}</b><em>${pctOf(x, 'back')}%</em></li>` : `<li><i style="background:${col}"></i><span>${l}</span><b>${x[k]}</b><em>${pctOf(x, k)}%</em></li>`).join('');
+        return `<div class="ad-dr"><strong>${esc(label)}</strong><div class="ad-ring-s"><svg width="104" height="104" viewBox="0 0 104 104"><circle cx="52" cy="52" r="${r}" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="12"/>${arcs}</svg><div class="ad-ring-c"><b>${pctOf(x, 'rAll')}%</b><span>RESOLVED</span></div></div><ul>${legend}</ul><p>${x.r30} resolved in last 30d</p></div>`;
+      };
+      const rings = `<div class="ad-drs">${dRing('All types', tot)}${rows.map((x) => dRing(x.o, x)).join('')}</div>`;
+      const max = Math.max(1, ...rows.map(sum4));
+      return `<section class="ad-card ad-bw"><h3>Delivery summary <small>${tot.rAll} resolved &middot; ${tot.pend} awaiting confirmation &middot; ${openAll(tot)} open (incl. ${tot.back} backlog)</small></h3>
+        ${rings}
+        <div class="ad-table"><table><thead><tr><th>Ticket type</th><th>Pending confirmation</th><th>Open (incl. backlog)</th><th>of which backlog</th><th>Resolved (30d)</th><th>Resolved (all time)</th><th>Delivered</th></tr></thead><tbody>${
+        rows.map((x) => `<tr><td>${esc(x.o)}</td><td>${x.pend}</td><td>${openAll(x)}</td><td style="color:${x.back ? '#ef4444' : 'inherit'}">${x.back}</td><td>${x.r30}</td><td>${x.rAll}</td><td><span class="ad-bar" style="width:160px" title="${SEGS.map(([k, l]) => x[k] + ' ' + l.toLowerCase()).join(' + ')}">${SEGS.map(([k, , col]) => `<i data-tip="${esc(x.o)}|${k === 'open' ? 'Open (excl. backlog)' : SEGS.find((g) => g[0] === k)[1]}|${x[k]}|${sum4(x)}|${col}|0" style="display:inline-block;width:${(x[k] / max) * 100}%;background:${col}"></i>`).join('')}</span></td></tr>`).join('')
+      }<tr><td><b>Total</b></td><td><b>${tot.pend}</b></td><td><b>${openAll(tot)}</b></td><td><b>${tot.back}</b></td><td><b>${tot.r30}</b></td><td><b>${tot.rAll}</b></td><td></td></tr></tbody></table></div>
+      <p class="ad-note">Resolved = Solved or Closed tickets, by ticket type. "30d" uses the last status change date. Every open ticket is counted once: pending confirmation first, then backlog (On Hold or SLA breached), the rest is open. Green = resolved, amber = pending confirmation, grey = open, red = backlog. The Open column counts open + backlog.</p></section>`;
+    }
+
+    function summary(cases) {
+      const n = cases.length;
+      // Per-owner stats (the queue itself isn't a person, so it is kept out of the rankings).
+      const by = new Map();
+      cases.forEach((c) => { const o = c.owner || 'Unassigned'; if (!by.has(o)) by.set(o, []); by.get(o).push(c); });
+      const people = [...by].map(([o, cs]) => {
+        const hh = Object.fromEntries(HEALTH.map(([k]) => [k, cs.filter((c) => healthOf(c) === k).length]));
+        return {
+          o, cs, n: cs.length, ...hh,
+          ok: cs.length - hh.breach,
+          okPct: (cs.length - hh.breach) / cs.length,
+          worst: Math.max(0, ...cs.map(overDays)),
+          held: Math.max(...cs.map((c) => (Date.now() - new Date(c.ownerSince)) / DAY)),
+          isQueue: /queue/i.test(o),
+        };
+      }).sort((a, b) => b.n - a.n);
+      const real = people.filter((p) => !p.isQueue);
+
+      BANDWIDTH = `<section class="ad-card ad-bw"><h3>Team bandwidth <small>${n} tickets &middot; ${people.length} owners</small></h3><div class="ad-people">${
+        people.map((p) => {
+          const seg = HEALTH.map(([k]) => p[k] ? `<i title="${p[k]} ${k}" style="width:${(p[k] / p.n) * 100}%;background:${HCOL[k]}"></i>` : '').join('');
+          return `<div class="ad-person"><header><b>${esc(p.o)}</b><span>${p.n} ticket${p.n > 1 ? 's' : ''}</span></header><div class="ad-stack">${seg}</div>
+            <p><span>${p.on} on track &middot; ${p.risk} at risk &middot; <span style="color:${p.breach ? '#ef4444' : 'inherit'}">${p.breach} breached</span> &middot; ${p.paused} paused</span></p>
+            <p><span>Worst: ${p.worst ? fmtD(p.worst) + ' over' : 'none'}</span><span>Longest held ${fmtD(p.held)}</span></p></div>`;
+        }).join('')}</div>
+        <p class="ad-note">SLA: Feature Request 3d &middot; Tool Migration has no SLA &middot; New Tool Request 7d (assumed) &middot; Integration/Automation 30d. The clock runs from ticket creation and pauses while a ticket is On Hold or Pending/Waiting, so the deadline moves out by the paused time. Calendar days. Admin Queue is unassigned work and is left out of the rankings.</p></section>`;
+
+      // Best = highest share within SLA (min 3 tickets so one ticket can't top the list); worst = most breaches.
+      const best = real.filter((p) => p.n >= 3).sort((a, b) => b.okPct - a.okPct || a.breach - b.breach || b.n - a.n).slice(0, 5);
+      const worst = real.filter((p) => p.breach).sort((a, b) => b.breach - a.breach || b.worst - a.worst).slice(0, 5);
+      const list = (arr, fmt, empty) => arr.length ? `<ol>${arr.map((p, i) => `<li><span class="rk">${i + 1}</span>${esc(p.o)}<em>${fmt(p)}</em></li>`).join('')}</ol>` : `<p class="ad-empty">${empty}</p>`;
+      const lb = `<div class="ad-lb">
+        ${'' /* <section class="ad-card"><h3>Best performers <small>% of tickets within SLA &middot; min 3 tickets</small></h3>${list(best, (p) => `${Math.round(p.okPct * 100)}% &middot; ${p.ok}/${p.n} within SLA`, 'No owner has 3+ tickets yet.')}</section> */}
+        ${'' /* <section class="ad-card"><h3>Most SLA breaches</h3>${list(worst, (p) => `${p.breach} breached &middot; worst ${fmtD(p.worst)} over`, 'No SLA breaches.')}</section> */}
+      </div>`;
+
+      const chips = `<div class="ad-filter"><span>Show tickets</span>${[['all', 'All']].concat(HEALTH.map(([k, l]) => [k, l])).map(([k, l]) => `<button type="button" class="ad-chip" data-f="${k}" aria-pressed="${FILTER === k}">${l}</button>`).join('')}</div>`;
+      // "All tickets received till date" section hidden; re-enable by adding overview(cases) + back in front.
+      return /* overview(cases) + */ lb;
+    }
+
+    const TABS = {}; // ticket type -> 'working' | 'backlog', kept across the 60s refresh
+
+    // Migration progress: closed / (open + closed). On Hold and Pending count as open, so the total is just the tickets present.
+    function progressCard(type, openCases, closedCases) {
+      const o = openCases.length, d = closedCases.length, total = o + d;
+      if (!total) return '';
+      const pct = Math.round((d / total) * 100);
+      const seg = (n, col, tab, label) => n ? `<button type="button" data-tab="${tab}" data-type="${esc(type)}" style="width:${(n / total) * 100}%;background:${col}" data-tip="${esc(type)}|${label}|${n}|${total}|${col}|0" aria-label="${label}: ${n}"></button>` : '';
+      const per = new Map();
+      const slot = (c) => { const k = c.tool || NONE; if (!per.has(k)) per.set(k, [0, 0]); return per.get(k); };
+      openCases.forEach((c) => slot(c)[0]++);
+      closedCases.forEach((c) => slot(c)[1]++);
+      const tools = [...per].sort((a, b) => (a[0] === NONE) - (b[0] === NONE) || (b[1][0] - a[1][0]) || (b[1][0] + b[1][1]) - (a[1][0] + a[1][1]));
+      const miniRing = (pd, pt, nm) => {
+        const r = 40, c = 2 * Math.PI * r, len = (pd / pt) * c;
+        return `<svg width="104" height="104" viewBox="0 0 104 104"><circle data-tip="${esc(nm)}|Open|${pt - pd}|${pt}|#64748b|0" cx="52" cy="52" r="${r}" fill="none" stroke="#64748b" stroke-width="12"/>${len ? `<circle data-tip="${esc(nm)}|Closed|${pd}|${pt}|#22c55e|0" cx="52" cy="52" r="${r}" fill="none" stroke="#22c55e" stroke-width="12" stroke-dasharray="${len} ${c - len}"/>` : ''}</svg>`;
+      };
+      const toolRows = `<div class="ad-prog-rings">${tools.map(([k, [po, pd]]) => {
+        const pt = po + pd;
+        return `<button type="button" class="ad-prog-ring" data-pop-tool="${esc(k)}" data-type="${esc(type)}" title="View ${esc(k)} tickets"><div class="ad-ring-s">${miniRing(pd, pt, k)}<div class="ad-ring-c"><b>${Math.round((pd / pt) * 100)}%</b></div></div><strong>${esc(k)}</strong><span>${pd} of ${pt} closed &middot; ${po} open</span></button>`;
+      }).join('')}</div>`;
+      return `<div class="ad-prog"><div class="ad-prog-h"><b>${pct}%</b><span>${d} of ${total} tickets closed &middot; <span style="color:#22c55e">${d} closed</span> &middot; ${o} open (incl. on hold)</span></div>
+        <div class="ad-prog-bar">${seg(d, '#22c55e', 'closed', 'Closed')}${seg(o, '#64748b', 'working', 'Open')}</div>${toolRows}</div>`;
+    }
+
+    const SEC_TOOL = {}; // per-section Tool type filter (all ticket types), kept across refresh
+    function section(type, fullCases) {
+      let toolChips = '';
+      let allCases = fullCases;
+      if (ALWAYS.includes(type)) {
+        const tc = new Map();
+        fullCases.forEach((c) => tc.set(c.tool || NONE, (tc.get(c.tool || NONE) || 0) + 1));
+        if (SEC_TOOL[type] && !tc.has(SEC_TOOL[type])) SEC_TOOL[type] = null;
+        const sel = SEC_TOOL[type] || 'all';
+        const list = [...tc].sort((a, b) => (a[0] === NONE) - (b[0] === NONE) || b[1] - a[1]);
+        toolChips = `<div class="ad-filter" style="margin:0 0 10px"><span>Tool type</span>${[['all', 'All', fullCases.length]].concat(list.map(([k, n]) => [k, k, n]))
+          .map(([k, l, n]) => `<button type="button" class="ad-chip" data-st="${esc(k)}" data-type="${esc(type)}" aria-pressed="${sel === k}">${esc(l)} <b>${n}</b></button>`).join('')}</div>`;
+        if (sel !== 'all') allCases = fullCases.filter((c) => (c.tool || NONE) === sel);
+      }
+      // Backlog = On Hold or SLA breached; everything else is being worked (incl. tickets waiting on confirmation).
+      const isBacklog = (c) => hasBacklog(type) && (c.status === 'On Hold' || healthOf(c) === 'breach');
+      const working = allCases.filter((c) => !isBacklog(c));
+      const backlog = allCases.filter(isBacklog);
+      const onHold = backlog.filter((c) => c.status === 'On Hold').length;
+      const breached = backlog.filter((c) => healthOf(c) === 'breach').length;
+      const pending = working.filter((c) => c.status === 'Pending Confirmation').length;
+      // Tool Migration also lists its Solved/Closed tickets in a third tab.
+      const hasClosed = type === 'Tool Migration';
+      const selTool = SEC_TOOL[type];
+      const closed = hasClosed ? (DATA.resolved || []).filter((r) => r.type === type && (!selTool || (r.tool || NONE) === selTool))
+        .sort((a, b) => Date.parse(b.solvedAt) - Date.parse(a.solvedAt)) : [];
+      const tab = (TABS[type] === 'closed' && !hasClosed) || (TABS[type] === 'backlog' && !hasBacklog(type)) ? 'working' : (TABS[type] || 'working');
+      const base = tab === 'working' ? working : tab === 'closed' ? closed : backlog;
+      const cases = FILTER === 'all' || tab === 'closed' ? base : base.filter((c) => healthOf(c) === FILTER);
+      const groups = [['Working', '#22c55e', working.length]].concat(hasBacklog(type) ? [['Backlog', '#ef4444', backlog.length]] : []);
+      const legend = groups.map(([n, col, v]) => `<li><i style="background:${col}"></i>${n}<em>${v}</em></li>`).join('')
+        + (!hasBacklog(type) ? '' : `<li class="sub">Backlog = ${onHold} on hold + ${breached} SLA breached${backlog.some((c) => c.status === 'On Hold' && healthOf(c) === 'breach') ? ' (some are both)' : ''}</li>`)
+        + (pending ? `<li class="sub">Working includes ${pending} pending confirmation</li>` : '');
+      const closedRows = closed.length ? `<table><thead><tr><th>Case</th><th>Subject</th><th>Owner</th><th>Tool</th><th>Status</th><th>Closed</th></tr></thead><tbody>${
+        closed.map((c) => `<tr><td><a href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.caseNumber)}</a></td><td class="subj" title="${esc(c.subject)}">${esc(c.subject)}</td><td>${esc(c.owner)}</td><td>${esc(c.tool || '')}</td><td>${esc(c.status)}</td><td>${new Date(c.solvedAt).toLocaleDateString()}</td></tr>`).join('')
+      }</tbody></table>` : '';
+      const rows = tab === 'closed' ? (closedRows || '<p class="subtitle">No closed tickets.</p>') : cases.length ? `<table><thead><tr><th>Case</th><th>Subject</th><th>Owner</th><th>Tool</th><th>Status</th><th>Held by owner</th><th>Age</th><th>SLA progress</th></tr></thead><tbody>${
+        cases.map((c) => `<tr><td><a href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.caseNumber)}</a></td><td class="subj" title="${esc(c.subject)}">${esc(c.subject)}</td><td>${esc(c.owner)}</td><td>${esc(c.tool || '')}</td><td>${esc(c.status)}</td><td>${ageOf(c.ownerSince)}</td><td>${ageOf(c.createdDate)}</td><td>${slaCell(c)}</td></tr>`).join('')
+      }</tbody></table>` : `<p class="subtitle">${base.length ? 'No tickets match this filter.' : `No ${tab} tickets.`}</p>`;
+      const tabBtn = (k, label, n, col) => `<button type="button" class="ad-tab" role="tab" aria-selected="${tab === k}" data-tab="${k}" data-type="${esc(type)}" style="--tc:${col}">${label} <span>${n}</span></button>`;
+      return `<section class="ad-card"><h3>${esc(type)} <small><button type="button" class="ad-cnt" data-cnt="open" data-type="${esc(type)}">${allCases.length} open</button> &middot; <button type="button" class="ad-cnt" data-cnt="working" data-type="${esc(type)}">${working.length} working</button>${hasBacklog(type) ? ` &middot; <button type="button" class="ad-cnt" data-cnt="backlog" data-type="${esc(type)}" style="color:${backlog.length ? '#ef4444' : 'inherit'}">${backlog.length} backlog</button>` : ''}</small>${SLA_DAYS[type] || type !== 'Tool Migration' ? `<span class="sla">SLA ${SLA_DAYS[type] || 7} days</span>` : ''}</h3>
+        ${hasClosed ? progressCard(type, allCases, closed) : ''}
+        ${`<div class="ad-body"><div class="ad-summary">${ring(groups, allCases.length, type)}<ul class="ad-legend">${legend}</ul></div>
+        <div class="ad-tabbed">${toolChips}<div class="ad-tabs" role="tablist">${tabBtn('working', 'Working', working.length, '#22c55e')}${hasBacklog(type) ? tabBtn('backlog', 'Backlog', backlog.length, '#ef4444') : ''}${hasClosed ? tabBtn('closed', 'Closed', closed.length, '#64748b') : ''}</div><div class="ad-table">${rows}</div></div></div>`}</section>`;
+    }
+
+    function modal() {
+      const box = document.getElementById('adModal');
+      if (TOOL_POP && DATA && TOOL_POP.kind) {
+        const { type, kind } = TOOL_POP, sel = SEC_TOOL[type];
+        let list = DATA.cases.filter((c) => c.type === type && (!sel || (c.tool || NONE) === sel));
+        const isB = (c) => hasBacklog(type) && (c.status === 'On Hold' || healthOf(c) === 'breach');
+        if (kind === 'working') list = list.filter((c) => !isB(c));
+        else if (kind === 'backlog') list = list.filter(isB);
+        const col = kind === 'backlog' ? '#ef4444' : kind === 'working' ? '#22c55e' : '#64748b';
+        box.innerHTML = `<div class="ad-pop" role="dialog" aria-modal="true" aria-label="${esc(type)} &ndash; ${kind}">
+          <header style="border-top-color:${col}"><div><b>${esc(type)}</b> <span style="color:${col}">${kind}</span><small>${list.length} ticket${list.length === 1 ? '' : 's'}${sel ? ' &middot; ' + esc(sel) : ''}</small></div><button type="button" class="ad-x" data-close aria-label="Close">&times;</button></header>
+          <div class="ad-pop-b">${list.length ? `<table><thead><tr><th>Case</th><th>Subject</th><th>Owner</th><th>Tool</th><th>Status</th><th>Age</th><th>SLA progress</th></tr></thead><tbody>${
+            list.map((c) => `<tr><td><a href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.caseNumber)}</a></td><td class="sj" title="${esc(c.subject)}">${esc(c.subject)}</td><td>${esc(c.owner || 'Unassigned')}</td><td>${esc(c.tool || '')}</td><td>${esc(c.status)}</td><td>${ageOf(c.createdDate)}</td><td>${slaCell(c)}</td></tr>`).join('')
+          }</tbody></table>` : '<p class="ad-empty">No tickets.</p>'}</div></div>`;
+        box.hidden = false;
+        return;
+      }
+      if (TOOL_POP && DATA) {
+        const { type, tool } = TOOL_POP, col = '#22c55e';
+        const open = DATA.cases.filter((c) => c.type === type && (c.tool || NONE) === tool);
+        const done = (DATA.resolved || []).filter((c) => c.type === type && (c.tool || NONE) === tool).sort((a, b) => Date.parse(b.solvedAt) - Date.parse(a.solvedAt));
+        const tot = open.length + done.length;
+        const row = (c, when) => `<tr><td><a href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.caseNumber)}</a></td><td class="sj" title="${esc(c.subject)}">${esc(c.subject)}</td><td>${esc(c.owner || 'Unassigned')}</td><td>${esc(c.status)}</td><td>${when}</td></tr>`;
+        box.innerHTML = `<div class="ad-pop" role="dialog" aria-modal="true" aria-label="${esc(tool)} &ndash; ${esc(type)}">
+          <header style="border-top-color:${col}"><div><b>${esc(tool)}</b> <span style="color:${col}">${esc(type)}</span><small>${done.length} of ${tot} closed &middot; ${open.length} open</small></div><button type="button" class="ad-x" data-close aria-label="Close">&times;</button></header>
+          <div class="ad-pop-b">${tot ? `<table><thead><tr><th>Case</th><th>Subject</th><th>Owner</th><th>Status</th><th>Age / Closed</th></tr></thead><tbody>${
+            open.map((c) => row(c, ageOf(c.createdDate))).join('') + done.map((c) => row(c, new Date(c.solvedAt).toLocaleDateString())).join('')
+          }</tbody></table>` : '<p class="ad-empty">No tickets.</p>'}</div></div>`;
+        box.hidden = false;
+        return;
+      }
+      if (!SEL || !DATA || !ticketsOfFn) { box.hidden = true; return; }
+      const [, label, col] = segMeta.find(([k]) => k === SEL.key);
+      const own = SEL.name === 'Team total' ? null : SEL.name;
+      const list = ticketsOfFn(own, SEL.key);
+      box.innerHTML = `<div class="ad-pop" role="dialog" aria-modal="true" aria-label="${esc(SEL.name)} &ndash; ${label}">
+        <header style="border-top-color:${col}"><div><b>${esc(SEL.name)}</b> <span style="color:${col}">${label}</span><small>${list.length} ticket${list.length === 1 ? '' : 's'}</small></div><button type="button" class="ad-x" data-close aria-label="Close">&times;</button></header>
+        <div class="ad-pop-b">${list.length ? `<table><thead><tr><th>Case</th><th>Subject</th>${own == null ? '<th>Owner</th>' : ''}<th>Type</th><th>Status</th></tr></thead><tbody>${
+          list.map((t) => `<tr><td><a href="${esc(t.url)}" target="_blank" rel="noopener">${esc(t.caseNumber)}</a></td><td class="sj" title="${esc(t.subject)}">${esc(t.subject)}</td>${own == null ? `<td>${esc(t.owner || 'Unassigned')}</td>` : ''}<td>${esc(t.type)}</td><td>${esc(t.status)}</td></tr>`).join('')
+        }</tbody></table>` : '<p class="ad-empty">No tickets.</p>'}</div></div>`;
+      box.hidden = false;
+    }
+
+
+    // ---- Skeleton + lazy loading ----
+    const skRows = (n) => Array.from({ length: n }, () => `<div class="sk-tr">${'<div class="sk"></div>'.repeat(8)}</div>`).join('');
+    const skSection = (type) => {
+      const mig = type === 'Tool Migration';
+      const head = `<h3><span class="sk sk-line" style="width:160px;height:18px"></span><span class="sk sk-line" style="width:220px"></span><span class="sla sk sk-line" style="width:70px"></span></h3>`;
+      const prog = mig ? `<div class="sk-prog"><div class="ad-prog-h"><span class="sk" style="width:60px;height:26px"></span><span class="sk sk-line" style="width:300px"></span></div><div class="sk sk-bar"></div>
+          <div class="ad-prog-rings">${Array.from({ length: 3 }, () => '<div class="ad-prog-ring"><div class="sk sk-ring-s"></div><span class="sk sk-line" style="width:70px"></span><span class="sk sk-line" style="width:110px"></span></div>').join('')}</div></div>` : '';
+      return `<section class="ad-card" aria-hidden="true">${head}${prog}<div class="ad-body"><div class="ad-summary"><div class="sk sk-ring"></div>
+        <ul class="ad-legend" style="width:150px"><li><span class="sk sk-circle" style="width:10px;height:10px"></span><span class="sk sk-line" style="flex:1"></span></li><li><span class="sk sk-circle" style="width:10px;height:10px"></span><span class="sk sk-line" style="flex:1"></span></li><li><span class="sk sk-line" style="width:100%;height:9px"></span></li></ul></div>
+        <div class="ad-tabbed"><div class="sk-tabs"><span class="sk"></span><span class="sk"></span></div><div class="ad-table">${skRows(5)}</div></div></div></section>`;
+    };
+    const skDelivery = () => `<section class="ad-card ad-bw" aria-hidden="true"><h3><span class="sk sk-line" style="width:200px;height:18px"></span><span class="sk sk-line" style="width:280px"></span></h3>
+      <div class="ad-drs">${Array.from({ length: 5 }, () => `<div class="ad-dr"><span class="sk sk-line" style="width:90px"></span><div class="sk sk-ring-s"></div><ul>${'<li style="grid-template-columns:8px 1fr 20px 30px"><span class="sk sk-circle" style="width:8px;height:8px"></span><span class="sk sk-line"></span><span class="sk sk-line"></span><span class="sk sk-line"></span></li>'.repeat(4)}</ul></div>`).join('')}</div>
+      <div class="ad-table">${skRows(5)}</div></section>`;
+    const skTop = () => `<div class="ad-filter" aria-hidden="true"><span class="sk sk-line" style="width:50px"></span>${'<span class="sk sk-pill"></span>'.repeat(3)}</div>`;
+    function showSkeleton() {
+      document.getElementById('adTop').innerHTML = skTop();
+      document.getElementById('adSections').innerHTML = ALWAYS.map(skSection).join('') + skDelivery();
+    }
+
+    // Sections build their (heavy) HTML only when scrolled near the viewport; once revealed they render immediately on later re-renders.
+    const REVEALED = new Set();
+    const LAZY = new Map();
+    const lazyIO = 'IntersectionObserver' in window ? new IntersectionObserver((entries) => {
+      entries.forEach((en) => {
+        if (!en.isIntersecting) return;
+        const el = en.target, key = el.dataset.lazy, build = LAZY.get(key);
+        lazyIO.unobserve(el);
+        if (!build) return;
+        REVEALED.add(key);
+        el.outerHTML = build();
+      });
+    }, { rootMargin: '300px 0px' }) : null;
+    function lazyBlock(key, type, build) {
+      if (!lazyIO || REVEALED.has(key)) return build();
+      LAZY.set(key, build);
+      return `<div class="ad-lazy" data-lazy="${esc(key)}">${key === 'delivery' ? skDelivery() : skSection(type)}</div>`;
+    }
+    function observeLazy() {
+      if (!lazyIO) return;
+      document.querySelectorAll('#adSections [data-lazy]').forEach((el) => lazyIO.observe(el));
+    }
+
+    let RAW = null;
+    let TOOL_F = 'all'; // Tool Type (Salesforce Tools_Platform__c) filter: 'all', a value, or NONE
+    const NONE = '(not set)';
+    let PERIOD = 'all'; // all | week | month: open tickets by created date, resolved by solved date
+    const PERIODS = [['all', 'All time', 0], ['week', 'Weekly (last 7 days)', 7]]; // plus a month dropdown ('m:YYYY-MM')
+    const monthKey = (iso) => { const d = new Date(iso); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
+    let TYPE_F = 'all'; // ticket type filter: 'all' or one of ALWAYS
+
+    function render() {
+      // Everything below (tiles, bars, sections, popup) reads DATA, which is RAW narrowed to the chosen ticket type.
+      const toolOf = (t) => t.tool || NONE;
+      const keep = (t) => (TYPE_F === 'all' || t.type === TYPE_F) && (TOOL_F === 'all' || toolOf(t) === TOOL_F);
+      const days = (PERIODS.find(([k]) => k === PERIOD) || [0, 0, 0])[2], from = days ? Date.now() - days * DAY : 0;
+      const mSel = PERIOD.startsWith('m:') ? PERIOD.slice(2) : null;
+      const inPeriod = (iso) => mSel ? monthKey(iso) === mSel : !days || Date.parse(iso) >= from;
+      DATA = { ...RAW, cases: RAW.cases.filter((c) => keep(c) && inPeriod(c.createdDate)), resolved: (RAW.resolved || []).filter((r) => keep(r) && inPeriod(r.solvedAt)) };
+      const months = [...new Set([...RAW.cases.map((c) => c.createdDate), ...(RAW.resolved || []).map((r) => r.solvedAt)].filter(Boolean).map(monthKey).concat(mSel ? [mSel] : []))].sort().reverse();
+      const mLabel = (k) => new Date(+k.slice(0, 4), +k.slice(5) - 1, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+      const periodBar = `<div class="ad-filter"><span>Period</span>${PERIODS.map(([k, l]) => `<button type="button" class="ad-chip" data-pd="${k}" aria-pressed="${PERIOD === k}">${l}</button>`).join('')}<select class="ad-select" id="adMonth" aria-label="Month" aria-pressed="${!!mSel}"><option value="">Month&hellip;</option>${months.map((k) => `<option value="${k}"${mSel === k ? ' selected' : ''}>${mLabel(k)}</option>`).join('')}</select>${PERIOD !== 'all' ? '<small style="color:var(--text-secondary)">Tickets opened and resolved in this window</small>' : ''}</div>`;
+      const byType = new Map(ALWAYS.filter((t) => TYPE_F === 'all' || t === TYPE_F).map((t) => [t, []]));
+      DATA.cases.forEach((c) => { if (!byType.has(c.type)) byType.set(c.type, []); byType.get(c.type).push(c); });
+      const count = (t) => RAW.cases.filter((c) => c.type === t).length;
+      const typeBar = `<div class="ad-filter ad-typebar"><span>Ticket type</span>${[['all', 'All', RAW.cases.length]].concat(ALWAYS.map((t) => [t, t, count(t)]))
+        .map(([k, l, n]) => `<button type="button" class="ad-chip" data-tf="${esc(k)}" aria-pressed="${TYPE_F === k}">${esc(l)} <b>${n}</b></button>`).join('')}</div>`;
+      // Tool types of the open tickets (same set the ticket type bar counts), most tickets first; counts follow the ticket type filter.
+      const inType = (t) => TYPE_F === 'all' || t.type === TYPE_F;
+      const tools = new Map();
+      RAW.cases.filter(inType).forEach((t) => tools.set(toolOf(t), (tools.get(toolOf(t)) || 0) + 1));
+      if (TOOL_F !== 'all' && !tools.has(TOOL_F)) tools.set(TOOL_F, 0);
+      const toolList = [...tools].sort((a, b) => (a[0] === NONE) - (b[0] === NONE) || b[1] - a[1]);
+      const toolBar = `<div class="ad-filter"><span>Tool type</span>${[['all', 'All', [...tools.values()].reduce((a, n) => a + n, 0)]].concat(toolList.map(([k, n]) => [k, k, n]))
+        .map(([k, l, n]) => `<button type="button" class="ad-chip" data-tl="${esc(k)}" aria-pressed="${TOOL_F === k}">${esc(l)} <b>${n}</b></button>`).join('')}</div>`;
+      document.getElementById('adTop').innerHTML = periodBar + summary(DATA.cases);
+      LAZY.clear();
+      const dd = DATA;
+      document.getElementById('adSections').innerHTML = [...byType].map(([t, cs]) => lazyBlock('sec:' + t, t, () => section(t, cs))).join('') + lazyBlock('delivery', '', () => delivery(dd.cases));
+      document.getElementById('adSections').removeAttribute('aria-busy');
+      observeLazy();
+      modal();
+      document.getElementById('adStamp').textContent = 'Updated ' + new Date(RAW.fetchedAt).toLocaleTimeString();
+    }
+
+    document.addEventListener('change', (e) => {
+      if (e.target.id === 'adMonth' && RAW) { PERIOD = e.target.value ? 'm:' + e.target.value : 'all'; SEL = null; TOOL_POP = null; modal(); render(); }
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && (SEL || TOOL_POP)) { SEL = null; TOOL_POP = null; render(); } });
+
+    // Hover tooltip for the bar segments.
+    const tip = document.getElementById('adTip');
+    document.addEventListener('mousemove', (e) => {
+      const seg = e.target.closest && e.target.closest('[data-tip]');
+      if (!seg) { tip.hidden = true; return; }
+      const [name, label, n, total, col, hint] = seg.dataset.tip.split('|');
+      tip.innerHTML = `<b style="color:${col}">${label}</b><br>${esc(name)}<br><strong>${n}</strong> of ${total} tickets &middot; ${Math.round((n / total) * 100)}%${hint === '0' ? '' : '<br><small>Click to view tickets</small>'}`;
+      tip.hidden = false;
+      tip.style.left = Math.min(e.clientX + 14, innerWidth - 220) + 'px';
+      tip.style.top = e.clientY + 16 + 'px';
+    });
+
+    // Slice clicks and filter chips both set the ticket filter; clicking the active one clears it.
+    document.addEventListener('click', (e) => {
+      if (e.target.closest('[data-close]') || e.target.id === 'adModal') { SEL = null; TOOL_POP = null; modal(); render(); return; }
+      const cn = e.target.closest('[data-cnt]');
+      if (cn && DATA) { TOOL_POP = { type: cn.dataset.type, kind: cn.dataset.cnt }; SEL = null; modal(); return; }
+      const pt = e.target.closest('[data-pop-tool]');
+      if (pt && DATA) { TOOL_POP = { type: pt.dataset.type, tool: pt.dataset.popTool }; SEL = null; modal(); return; }
+      const st = e.target.closest('[data-st]');
+      if (st && DATA) { SEC_TOOL[st.dataset.type] = st.dataset.st === 'all' ? null : st.dataset.st; render(); return; }
+      const pd = e.target.closest('[data-pd]');
+      if (pd && RAW) { PERIOD = pd.dataset.pd; SEL = null; TOOL_POP = null; modal(); render(); return; }
+      const tl = e.target.closest('[data-tl]');
+      if (tl && RAW) { TOOL_F = tl.dataset.tl; SEL = null; render(); return; }
+      const tf = e.target.closest('[data-tf]');
+      if (tf && RAW) { TYPE_F = tf.dataset.tf; TOOL_F = 'all'; SEL = null; render(); return; }
+      const tabEl = e.target.closest('[data-tab]');
+      if (tabEl && DATA) { TABS[tabEl.dataset.type] = tabEl.dataset.tab; render(); return; }
+      const seg = e.target.closest('[data-seg]');
+      if (seg && DATA) {
+        SEL = { name: seg.dataset.name, key: seg.dataset.seg };
+        tip.hidden = true;
+        render();
+        return;
+      }
+      const el = e.target.closest('[data-f]');
+      if (!el || !DATA) return;
+      FILTER = FILTER === el.dataset.f ? 'all' : el.dataset.f;
+      render();
+    });
+
+    async function load() {
+      try {
+        const res = await fetch('/api/automation-deliverables');
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || res.status);
+        RAW = data;
+        render();
+      } catch (e) {
+        if (!RAW) document.getElementById('adTop').innerHTML = '', document.getElementById('adSections').innerHTML = `<p class="subtitle">Could not load cases: ${esc(e.message)}</p>`;
+      }
+    }
+    showSkeleton();
+    load();
+    setInterval(load, 60000);
+  </script>
+</body>
+</html>

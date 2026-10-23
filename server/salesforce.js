@@ -1080,3 +1080,143 @@ export async function getGreenStats() {
   console.log(`[salesforce] getGreenStats: ${records.length} case(s), green=${isGreen}`);
   return stats;
 }
+
+/**
+ * Automation Deliverables page: open Admin Queue cases that are not Incidents
+ * or Service Requests, read straight from the two Salesforce list views the
+ * team already maintains so the page always matches what they see there.
+ * A case on both views is returned once.
+ */
+const AUTOMATION_LIST_VIEWS = [
+  'Admin_Open_Pending_Cases_Feature_Req',
+  'Admin_Queue_Tool_M_New_Tools_Integration',
+];
+
+export async function getAdminQueueCases() {
+  const byId = new Map();
+  for (const devName of AUTOMATION_LIST_VIEWS) {
+    const listViewId = await resolveListViewId(devName);
+    const results = await sfFetch(
+      `/services/data/${SF_API_VERSION}/sobjects/Case/listviews/${listViewId}/results?pageSize=2000`
+    );
+    for (const record of results.records) {
+      const f = Object.fromEntries(record.columns.map((col) => [col.fieldNameOrPath, col.value]));
+      if (byId.has(f.Id)) continue;
+      byId.set(f.Id, {
+        id: f.Id,
+        caseNumber: f.CaseNumber,
+        subject: f.Subject,
+        type: f.Type,
+        status: f.Status,
+        owner: f['Owner.Name'] || f['Owner.NameOrAlias'] || null,
+        account: f['Account.Name'] || f.Account_Name__c || null,
+        createdDate: new Date(f.CreatedDate).toISOString(),
+        url: `${SF_INSTANCE_URL}/lightning/r/Case/${f.Id}/view`,
+      });
+    }
+  }
+  const cases = [...byId.values()].filter((c) => c.type && c.type !== 'Incident' && c.type !== 'Service Request');
+  await addOwnerNames(cases);
+  await addSlaClock(cases);
+  console.log(`[salesforce] getAdminQueueCases: ${cases.length} case(s)`);
+  return cases;
+}
+
+// Statuses where the ticket is waiting on someone else, so the SLA clock is
+// paused and the deadline effectively slides out by the paused time.
+const isPausedStatus = (status) => status === 'On Hold' || /^Pending|^Waiting/.test(status || '');
+
+/**
+ * Adds activeMs (time spent in non-paused statuses since creation) and
+ * ownerSince (when the current owner got the case) from CaseHistory.
+ */
+async function addSlaClock(cases) {
+  const history = new Map();
+  for (let i = 0; i < cases.length; i += 100) {
+    const ids = cases.slice(i, i + 100).map((c) => soqlString(c.id)).join(',');
+    const soql =
+      `SELECT CaseId, Field, OldValue, NewValue, CreatedDate FROM CaseHistory ` +
+      `WHERE CaseId IN (${ids}) AND Field IN ('Status', 'Owner') ORDER BY CreatedDate ASC`;
+    let nextPath = `/services/data/${SF_API_VERSION}/query?q=${encodeURIComponent(soql)}`;
+    while (nextPath) {
+      const result = await sfFetch(nextPath);
+      for (const h of result.records || []) {
+        if (!history.has(h.CaseId)) history.set(h.CaseId, []);
+        history.get(h.CaseId).push(h);
+      }
+      nextPath = result.nextRecordsUrl || null;
+    }
+  }
+
+  const now = Date.now();
+  for (const c of cases) {
+    const events = history.get(c.id) || [];
+    const statusEvents = events.filter((h) => h.Field === 'Status');
+    let t = new Date(c.createdDate).getTime();
+    // Status before the first recorded change (falls back to current if never changed).
+    let status = statusEvents.length ? statusEvents[0].OldValue : c.status;
+    let active = 0;
+    for (const h of statusEvents) {
+      const at = new Date(h.CreatedDate).getTime();
+      if (!isPausedStatus(status)) active += Math.max(0, at - t);
+      t = at;
+      status = h.NewValue;
+    }
+    if (!isPausedStatus(status)) active += Math.max(0, now - t);
+
+    // Owner changes are logged twice (name and Id); the name row is the non-Id one.
+    const ownerEvents = events.filter((h) => h.Field === 'Owner' && !/^[0-9a-zA-Z]{15,18}$/.test(h.NewValue || ''));
+    const lastOwner = ownerEvents[ownerEvents.length - 1];
+    c.activeMs = active;
+    c.paused = isPausedStatus(c.status);
+    c.ownerSince = lastOwner ? lastOwner.CreatedDate : c.createdDate;
+  }
+}
+
+// The Tool Migration list view only exposes the owner's alias (e.g. "kshas",
+// "Kumar"), so resolve the real owner name straight from Case. Also picks up
+// the Tool Type picklist (Tools_Platform__c).
+async function addOwnerNames(cases) {
+  for (let i = 0; i < cases.length; i += 100) {
+    const ids = cases.slice(i, i + 100).map((c) => soqlString(c.id)).join(',');
+    const result = await sfFetch(
+      `/services/data/${SF_API_VERSION}/query?q=${encodeURIComponent(`SELECT Id, Owner.Name, Tools_Platform__c FROM Case WHERE Id IN (${ids})`)}`
+    );
+    const byId = new Map(result.records.map((r) => [r.Id, r]));
+    for (const c of cases.slice(i, i + 100)) {
+      c.owner = byId.get(c.id)?.Owner?.Name || c.owner;
+      c.tool = byId.get(c.id)?.Tools_Platform__c || null;
+    }
+  }
+}
+
+/**
+ * Solved/Closed tickets of the Automation Deliverables types, for the
+ * per-owner "resolved" counts. Feature Requests are limited to the Automation
+ * Form record type so ordinary customer feature requests don't count.
+ */
+export async function getResolvedAutomationCases() {
+  const soql =
+    `SELECT Id, CaseNumber, Subject, Type, Status, Owner.Name, Tools_Platform__c, CreatedDate, Last_Status_Change_Date__c, LastModifiedDate FROM Case ` +
+    `WHERE Status IN ('Solved', 'Closed') AND ((Type IN ('Tool Migration', 'New Tool Request', 'Integration/Automation')) ` +
+    `OR (Type = 'Feature Request' AND Record_Type_Name__c = 'Automation Form'))`;
+  const records = [];
+  let nextPath = `/services/data/${SF_API_VERSION}/query?q=${encodeURIComponent(soql)}`;
+  while (nextPath) {
+    const result = await sfFetch(nextPath);
+    records.push(...(result.records || []));
+    nextPath = result.nextRecordsUrl || null;
+  }
+  console.log(`[salesforce] getResolvedAutomationCases: ${records.length} case(s)`);
+  return records.map((r) => ({
+    id: r.Id,
+    caseNumber: r.CaseNumber,
+    subject: r.Subject,
+    status: r.Status,
+    url: `${SF_INSTANCE_URL}/lightning/r/Case/${r.Id}/view`,
+    type: r.Type,
+    owner: r.Owner?.Name || null,
+    tool: r.Tools_Platform__c || null,
+    solvedAt: new Date(r.Last_Status_Change_Date__c || r.LastModifiedDate).toISOString(),
+  }));
+}

@@ -6,7 +6,7 @@ import express from 'express';
 import {
   getCaseListView, getGreenStats, getTicketHistory, getTrendData, getTrendDayDetail,
   getTicketInflowHealth, getTicketBacklogHealth,
-  getTicketResolutionHealth, getTicketResolutionHealthSev3,
+  getTicketResolutionHealth, getTicketResolutionHealthSev3, getAdminQueueCases, getResolvedAutomationCases,
 } from './salesforce.js';
 import { dayKeyInZone, isValidTimeZone, zonedMidnightUtc } from './tz.js';
 import { computeTeoKpis, currentIstYearMonth } from './teoKpi.js';
@@ -493,6 +493,16 @@ async function ticketHealthAnchor(year, week) {
   }
   return new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
 }
+
+app.get('/api/automation-deliverables', async (req, res) => {
+  try {
+    const [cases, resolved] = await Promise.all([getAdminQueueCases(), getResolvedAutomationCases()]);
+    res.json({ cases, resolved, fetchedAt: new Date().toISOString() });
+  } catch (err) {
+    console.error(err);
+    res.status(502).json({ error: err.message });
+  }
+});
 
 app.get('/api/ticket-inflow', requireTicketHealthApi, async (req, res) => {
   try {
