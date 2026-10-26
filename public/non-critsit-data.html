@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Non-CritSit data</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f3f5f8;--panel:#ffffff;--ink:#18222f;--muted:#5b6878;--line:#d8dee7;--accent:#1f4e79;--accent2:#c9741a;--bad:#a8302a;--good:#2f7d5b;--heat:168,48,42;--grid:#e6eaf0;--soft:#eef2f7}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10161e;--panel:#18212c;--ink:#e6ebf2;--muted:#9aa8ba;--line:#2a3646;--accent:#6fa8dc;--accent2:#e6a04b;--bad:#e0675f;--good:#58b88d;--heat:224,103,95;--grid:#243040;--soft:#1f2a38}}
+:root[data-theme="dark"]{--bg:#10161e;--panel:#18212c;--ink:#e6ebf2;--muted:#9aa8ba;--line:#2a3646;--accent:#6fa8dc;--accent2:#e6a04b;--bad:#e0675f;--good:#58b88d;--heat:224,103,95;--grid:#243040;--soft:#1f2a38}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*:before,*:after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Public Sans",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;font-size:15px;line-height:1.5}
+header{padding:28px 24px 8px;max-width:1280px;margin:0 auto}
+h1{font-size:26px;line-height:1.2;margin:0 0 6px;font-weight:700;letter-spacing:-.01em;max-width:32em}
+.sub{color:var(--muted);margin:0;max-width:66ch}
+.kpis{display:flex;flex-wrap:wrap;gap:28px;margin:22px 0 4px}
+.kpi b{display:block;font-size:30px;line-height:1.1;font-variant-numeric:tabular-nums}
+.kpi span{color:var(--muted);font-size:13px}
+nav{max-width:1280px;margin:0 auto;padding:0 24px;display:flex;gap:4px;border-bottom:1px solid var(--line);position:sticky;top:env(safe-area-inset-top,0px);background:var(--bg);z-index:5;overflow-x:auto}
+nav button{background:none;border:0;color:var(--muted);font:inherit;font-weight:600;padding:12px 14px;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap}
+nav button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+nav button:focus-visible,.theme:focus-visible,summary:focus-visible,.fbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.theme{margin-left:auto;background:none;border:1px solid var(--line);color:var(--muted);border-radius:6px;padding:4px 10px;font:inherit;font-size:13px;cursor:pointer;align-self:center}
+main{max-width:1280px;margin:0 auto;padding:20px 24px 48px}
+section[hidden]{display:none}
+.grid{display:grid;gap:20px;grid-template-columns:repeat(12,1fr)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px 18px;min-width:0}
+.c7{grid-column:span 7}.c5{grid-column:span 5}.c6{grid-column:span 6}.c12{grid-column:span 12}
+@media(max-width:900px){.c7,.c5,.c6{grid-column:span 12}}
+h2{font-size:16px;margin:0 0 4px}
+.note{color:var(--muted);font-size:13px;margin:0 0 12px;max-width:84ch}
+.chart{position:relative;height:340px}.chart.short{height:260px}.chart.tall{height:520px}.chart.xtall{height:640px}.stat.wide{min-width:260px;flex:1}.stat dl{margin:8px 0 6px;display:grid;gap:2px}.stat dl div{display:flex;justify-content:space-between;gap:16px;font-size:13px}.stat dt{color:var(--muted)}.stat dd{margin:0;font-weight:600;text-align:right}.stat dd em{font-style:normal;font-weight:400;color:var(--muted);font-size:12px;display:block}.stat i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px}.lead h3{font-size:20px;line-height:1.3;margin:12px 0 4px;max-width:40em}.lead p{margin:0;color:var(--muted);max-width:84ch}
+.scroll{overflow-x:auto}.scroll.tall{max-height:480px;overflow-y:auto}
+table{border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+th,td{padding:5px 8px;border-bottom:1px solid var(--grid);text-align:right;white-space:nowrap}
+th{font-weight:600;color:var(--muted);vertical-align:bottom;background:var(--panel)}
+.scroll.tall th{position:sticky;top:0;z-index:2}
+th:first-child,td:first-child{text-align:left;position:sticky;left:0;background:var(--panel);z-index:1}
+th.rot{height:170px;vertical-align:bottom;padding:4px 2px}
+th.rot div{writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;margin:0 auto;font-size:12px}
+td.h{text-align:center;min-width:34px}
+td.zero{color:var(--muted);opacity:.45}
+th.band{text-align:center;color:var(--ink);border-bottom:3px solid var(--muted)}th.band.go{border-bottom-color:#1f4e79}th.band.cu{border-bottom-color:#c9741a}h3.grp{font-size:17px;margin:18px 0 8px}tr.totrow td{font-weight:700;border-top:2px solid var(--ink);background:var(--soft)}
+td.sub,th.sub{background:var(--soft);font-weight:600}
+td.l,th.l{text-align:left;white-space:normal;min-width:120px;vertical-align:top}td.wide{min-width:300px;max-width:460px}hr.tk{border:0;border-top:1px solid var(--grid);margin:6px 0}
+.tag{display:inline-block;padding:1px 8px;border-radius:10px;font-size:12px;font-weight:600;white-space:nowrap}
+.tag.y{background:rgba(var(--heat),.16);color:var(--bad)}.tag.g{background:rgba(47,125,91,.16);color:var(--good)}.tag.o{background:rgba(201,116,26,.18);color:var(--accent2)}.tag.n{background:var(--soft);color:var(--muted)}
+.stats{display:flex;flex-wrap:wrap;gap:12px;margin:0 0 12px}
+.stat{background:var(--soft);border-radius:6px;padding:8px 14px}.stat b{font-size:20px;display:block;line-height:1.2}.stat span{font-size:12px;color:var(--muted)}
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px}
+td a{color:var(--ink);text-decoration:underline;text-underline-offset:2px}td a:hover{color:var(--accent)}
+.msel{position:relative;display:inline-block}.msel summary{cursor:pointer;border:1px solid var(--line);border-radius:14px;padding:4px 12px;font-size:12.5px;color:var(--ink);list-style:none;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.msel summary::after{content:' \25BE'}
+.mpanel{position:absolute;z-index:30;top:calc(100% + 4px);left:0;min-width:260px;max-height:320px;overflow:auto;background:var(--panel,#fff);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+.mpanel label{display:flex;gap:6px;align-items:center;padding:3px 4px;font-size:12.5px;cursor:pointer;white-space:nowrap}
+.fbtn{background:none;border:1px solid var(--line);color:var(--muted);border-radius:14px;padding:3px 12px;font:inherit;font-size:12px;cursor:pointer}
+.fbtn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+details.story{border:1px solid var(--line);border-radius:8px;margin:0 0 12px;background:var(--panel)}
+details.story>summary{cursor:pointer;padding:12px 16px;font-weight:600;list-style:none;display:flex;gap:12px;flex-wrap:wrap;align-items:baseline}
+details.story>summary::-webkit-details-marker{display:none}
+details.story>summary:before{content:"+";font-weight:700;color:var(--accent);width:12px}
+details.story[open]>summary:before{content:"–"}
+.sbody{padding:0 16px 14px}
+.sbody p{margin:0 0 10px;max-width:90ch}
+.meta{font-weight:400;color:var(--muted);font-size:13px}
+ul.acts{margin:0;padding-left:16px}ul.acts li{margin:0 0 3px}
+.gantt{display:grid;grid-template-columns:minmax(220px,320px) 1fr;gap:6px 12px;align-items:center;font-size:13px}
+.gl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.track{position:relative;height:18px;background:repeating-linear-gradient(90deg,transparent 0,transparent calc(12.5% - 1px),var(--grid) calc(12.5% - 1px),var(--grid) 12.5%);border-radius:3px}
+.bar{position:absolute;top:2px;bottom:2px;border-radius:3px;background:var(--accent)}
+.bar.P1{background:var(--bad)}.bar.P2{background:var(--accent2)}.bar.P3{background:var(--accent)}.bar.M{background:var(--good)}
+.peak{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink)}
+.axis{display:flex;justify-content:space-between;color:var(--muted);font-size:12px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:8px 0}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+</style>
+<style id="cs-theme">
+/* CritSit dashboard look: dark glass theme matching styles.css */
+:root[data-theme="dark"]{--bg:#09090b;--panel:#121216;--ink:#f9fafb;--muted:#9ca3af;--line:rgba(255,255,255,.09);--accent:#3b82f6;--accent2:#f59e0b;--bad:#f87171;--good:#22c55e;--heat:239,68,68;--grid:rgba(255,255,255,.07);--soft:rgba(255,255,255,.05)}
+html{background:var(--bg)}
+body{background:transparent;font-family:-apple-system,"SF Pro Display","Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh;position:relative}
+:root:not([data-theme="dark"]) .cs-blob,:root:not([data-theme="dark"]) .cs-gridbg{display:none}
+.cs-decor{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none}
+.cs-blob{position:absolute;border-radius:50%;filter:blur(90px);opacity:.16}
+.cs-blob.a{width:560px;height:560px;top:-220px;left:-140px;background:radial-gradient(circle,#22c55e,transparent 70%)}
+.cs-blob.b{width:620px;height:620px;top:-100px;right:-220px;background:radial-gradient(circle,#3b82f6,transparent 70%)}
+.cs-blob.c{width:500px;height:500px;bottom:-260px;left:30%;background:radial-gradient(circle,#8b5cf6,transparent 70%)}
+.cs-gridbg{position:absolute;inset:-1px;background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);background-size:44px 44px;-webkit-mask-image:radial-gradient(ellipse 70% 60% at 50% 0,#000 40%,transparent 100%);mask-image:radial-gradient(ellipse 70% 60% at 50% 0,#000 40%,transparent 100%)}
+.cs-topbar{position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px 16px;padding:16px 28px;background:color-mix(in srgb,var(--bg) 78%,transparent);backdrop-filter:blur(16px) saturate(140%);-webkit-backdrop-filter:blur(16px) saturate(140%);border-bottom:1px solid var(--line)}
+.cs-topbar:after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;background:linear-gradient(90deg,transparent,rgba(59,130,246,.45),transparent)}
+.cs-brand{display:flex;align-items:center;gap:12px}
+.cs-brand img{display:block;width:34px;height:34px;border-radius:9px;object-fit:cover;box-shadow:0 0 0 1px var(--line)}
+.cs-brand div{display:flex;flex-direction:column;line-height:1.25}
+.cs-brand b{font-size:16px;font-weight:700;letter-spacing:-.01em}
+.cs-brand span{font-size:11.5px;color:var(--muted);font-weight:500}
+.cs-pills{display:flex;align-items:center;flex-wrap:wrap;gap:4px;padding:4px;border-radius:999px;background:var(--soft);border:1px solid var(--line);max-width:100%}
+.cs-pills a{padding:7px 12px;white-space:nowrap;border-radius:999px;font-size:12.5px;font-weight:650;letter-spacing:.01em;color:var(--muted);text-decoration:none;transition:color .15s,background .15s}
+.cs-pills a:hover{color:var(--ink)}
+.cs-pills a.is-active{background:color-mix(in srgb,#22c55e 14%,var(--panel));color:color-mix(in srgb,#22c55e 75%,white)}
+.cs-env{display:inline-flex;align-items:center;gap:7px;font-size:11px;font-weight:600;color:var(--muted);padding:4px 10px;border:1px solid var(--line);border-radius:999px;background:var(--soft)}
+.cs-meta{display:flex;align-items:center;gap:8px}.cs-refresh{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;font:inherit;font-size:11.5px;font-weight:650;color:var(--ink);background:var(--soft);border:1px solid var(--line);border-radius:999px;cursor:pointer}.cs-refresh:hover{border-color:var(--accent)}.cs-refresh:active{transform:scale(.96)}
+.cs-env i{width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 8px #22c55e}
+.panel,details.story,.stat,.lead{border-radius:16px}
+.panel,details.story{box-shadow:0 10px 26px -14px rgba(0,0,0,.5)}
+:root[data-theme="dark"] .panel,:root[data-theme="dark"] details.story{background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.015)),var(--panel)}
+nav[role=tablist]{position:static;background:transparent;border-bottom:1px solid var(--line)}
+nav[role=tablist] button{border-radius:8px 8px 0 0}
+nav[role=tablist] button[aria-selected="true"]{border-bottom-color:#22c55e}
+.kpi b{background:linear-gradient(135deg,var(--ink),var(--muted));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+:root:not([data-theme="dark"]) .kpi b{background:none;-webkit-text-fill-color:currentColor}
+.fbtn[aria-pressed="true"]{background:#22c55e;border-color:#22c55e;color:#04210f}
+</style>
+<link rel="icon" type="image/jpeg" href="go-logo.jpg">
+<style>#heat{width:100%}#heat td.h{min-width:0}</style>
+<style>
+.sevbar{max-width:1280px;margin:0 auto;padding:18px 24px 0}
+.sevbar h1{margin-bottom:10px}
+.sevbar .filters{margin:0;align-items:center}
+.sevbar select{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:5px 12px;font:inherit;font-size:13px;font-weight:600;max-width:100%}
+.sevbar select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.sevbar label{color:var(--muted);font-size:13px;margin-left:10px}
+.sevnote{color:var(--muted);font-size:12px;margin:8px 0 0}
+.sevbar .fbtn{padding:5px 18px;font-size:13px;font-weight:600}
+#clive,#csub{font-size:12px}.unm{display:inline}.unm summary{display:inline;cursor:pointer;color:var(--accent);text-decoration:underline;text-underline-offset:2px}.unm[open]{display:block;margin-top:4px}
+#frames,#combined{max-width:1280px;margin:0 auto}#combined{padding:12px 24px 48px}#combined[hidden]{display:none}#combined .grid{display:grid;gap:20px;grid-template-columns:repeat(12,1fr);margin-top:18px}#combined .c12{grid-column:span 12}#cheat{width:100%}#cheat td.h{min-width:0}
+#frames iframe{display:block;width:100%;border:0;height:900px;background:transparent}
+#frames iframe[hidden]{display:none}
+#frames{position:relative}
+@keyframes sksh{from{background-position:200% 0}to{background-position:-200% 0}}
+.frameskel{display:grid;gap:16px;padding:20px 24px}
+.frameskel[hidden]{display:none}
+.frameskel i{display:block;border-radius:12px;background:linear-gradient(90deg,var(--soft) 30%,color-mix(in srgb,var(--ink) 9%,var(--soft)) 50%,var(--soft) 70%) 0 0/200% 100%;animation:sksh 1.4s linear infinite}
+.frameskel .k{height:56px;max-width:640px}.frameskel .t{height:36px}.frameskel .p{height:280px}.frameskel .p2{height:220px}
+@media(prefers-reduced-motion:reduce){.frameskel i{animation:none}}
+#combined.sk .kpis:empty{height:64px}
+#combined.sk .kpis,#combined.sk .panel,#combined.sk .lead{border-radius:12px;background:linear-gradient(90deg,var(--soft) 30%,color-mix(in srgb,var(--ink) 9%,var(--soft)) 50%,var(--soft) 70%) 0 0/200% 100%;animation:sksh 1.4s linear infinite;border-color:transparent}
+#combined.sk .kpis>*,#combined.sk .panel>*,#combined.sk .lead>*{visibility:hidden}
+#combined.sk .panel{min-height:200px}#combined.sk .lead{min-height:70px}
+@media(prefers-reduced-motion:reduce){#combined.sk .kpis,#combined.sk .panel,#combined.sk .lead{animation:none}}
+</style>
+</head>
+<body>
+<div class="cs-decor" aria-hidden="true"><span class="cs-blob a"></span><span class="cs-blob b"></span><span class="cs-blob c"></span><span class="cs-gridbg"></span></div>
+<div class="cs-topbar"><div class="cs-brand"><img src="go-logo.jpg" alt="" width="34" height="34"><div><b>CritSit Dashboard</b><span>GreyOrange Service &middot; Live Operations</span></div></div><div class="cs-pills" role="navigation" aria-label="Primary"><a href="/">Home</a><a href="/software-stability">Software Stability</a><a href="/ticket-health">Ticket Health</a><!-- <a href="/sev1-peak-readiness">Sev 1 Peak Readiness</a><a href="/sev2-peak-readiness">Sev 2 Peak Readiness</a> --><a href="/sev-peak-readiness">CritSit Data</a><a href="/non-critsit-data" class="is-active">Non-CritSit Data</a><!-- <a href="/automation-deliverables">Automation Deliverables</a> --></div><div class="cs-meta"><span class="cs-env"><i></i>Production</span><button class="cs-refresh" type="button" onclick="location.reload()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 11A8.1 8.1 0 0 0 4.5 9M4 5v4h4M4 13a8.1 8.1 0 0 0 15.5 2M20 19v-4h-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Refresh</span></button></div></div>
+<div class="sevbar">
+<h1>Non-CritSit data</h1>
+<div class="filters" id="sevfilters" role="group" aria-label="Severity (multi-select)"><button class="fbtn" type="button" aria-pressed="true" data-s="2">Sev 2 (impact &lt; 50%)</button><button class="fbtn" type="button" aria-pressed="true" data-s="3">Sev 3</button><label for="monthsel">Month</label><select id="monthsel" aria-label="Month"></select><label for="sitesel">Site</label><details class="msel" id="sitesel"><summary id="sitesum">All sites</summary><div class="mpanel"><button type="button" class="fbtn" id="siteclear">Clear (all sites)</button><button type="button" class="fbtn" id="sitetop" aria-pressed="false" style="margin-left:6px">Top 26 sites</button><div id="sitelist"></div></div></details><button class="fbtn" type="button" id="resetall">Reset filters</button></div>
+<p class="sevnote" id="sitenote" hidden>Showing live data for the selected site only.</p>
+</div>
+<div id="combined">
+<p class="sub" id="csub"></p>
+<p class="sub" id="clive">Loading live data from Salesforce and Jira…</p>
+<div class="kpis" id="ckpis"></div>
+<div class="grid">
+<div class="panel c12"><h2>Cases by site</h2><p class="note">Sev2 (impact below 50%) and Sev3 added together, by site and Technical Impact Area. The bottom row is the total of each area across all sites.</p><div class="stats" id="cstats"></div><div class="scroll"><table id="cheat"></table></div></div>
+<div class="panel c6"><h2>Software bug tickets by Technical Impact Area</h2><p class="note">Technical Impact Area chosen on each bug case, selected severities together.</p><div class="chart" style="height:480px"><canvas id="cbugbar"></canvas></div></div>
+<div class="panel c6"><h2>Share of bug tickets by Jira project</h2><p class="note">Project of the Jira dev case linked to each bug ticket. Bug tickets with no dev case are shown separately.</p><div class="chart" style="height:480px"><canvas id="cgmdonut"></canvas></div></div>
+<div class="panel c12"><h2>Bug list</h2><div class="stats" id="cbugstats"></div><div class="filters" id="cbugfilters"></div><div class="scroll tall"><table id="cbuglist"></table></div></div>
+<div class="c12 lead"><h3 id="clead"></h3><p>Non-bug Sev2 (impact below 50%) and Sev3 tickets, by Technical Impact Area after merging. Every category is either GO owned or customer owned.</p></div>
+<div class="panel c6"><h2 id="cgotitle"></h2><div class="chart tall"><canvas id="cgobar"></canvas></div></div>
+<div class="panel c6"><h2 id="ccutitle"></h2><div class="chart short"><canvas id="ccubar"></canvas></div></div>
+<div class="panel c12"><h2>Non-bug list</h2><div class="stats" id="cnbstats"></div><div class="filters" id="cnbfilters"></div><div class="scroll tall"><table id="cnblist"></table></div></div>
+</div>
+</div>
+<script>
+const comb=document.getElementById('combined');
+const sel=document.getElementById('sitesel'),slist=document.getElementById('sitelist');
+const $=s=>document.querySelector(s),esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let sevs=new Set([2,3]),month='',topMode=false,chosen=new Set(),known=new Set(),cseq=0,cdata=null,nbf='All',raw=null;
+const SEVTAG={2:'Sev2 (<50%)',3:'Sev3'};
+const siteStr=()=>[...chosen].join('\n'),scopeP=()=>topMode?'top':'all',siteQ=()=>[...chosen].map(x=>'&site='+encodeURIComponent(x)).join('');
+// Month filter: Jul 2026 up to the current IST month. '' = whole period (1 Jul to today).
+const istNow=new Date(Date.now()+5.5*3600000),MFROM=[2026,7];
+const curMonth=istNow.getUTCFullYear()+'-'+String(istNow.getUTCMonth()+1).padStart(2,'0');month=curMonth;
+function monthRange(m){if(!m)return null;const[y,mo]=m.split('-').map(Number),nx=mo===12?[y+1,1]:[y,mo+1],p=n=>String(n).padStart(2,'0');return{from:`${y}-${p(mo)}-01`,to:`${nx[0]}-${p(nx[1])}-01`}}
+(function(){const ms=document.getElementById('monthsel'),o=['<option value="">All (1 Jul \u2013 today)</option>'];let y=MFROM[0],m=MFROM[1];const ey=istNow.getUTCFullYear(),em=istNow.getUTCMonth()+1;
+ while(y<ey||(y===ey&&m<=em)){o.push(`<option value="${y}-${String(m).padStart(2,'0')}">${new Date(Date.UTC(y,m-1,1)).toLocaleDateString('en-GB',{month:'long',year:'numeric',timeZone:'UTC'})}</option>`);if(++m>12){m=1;y++}}
+ ms.innerHTML=o.join('');ms.value=month;
+ ms.onchange=()=>{month=ms.value;loadCombined()}})();
+function show(){
+ document.querySelectorAll('#sevfilters .fbtn[data-s]').forEach(b=>b.setAttribute('aria-pressed',sevs.has(+b.dataset.s)));
+ if(raw){cdata=merge(raw);paintCombined(cdata)}
+}
+function setTop(v){topMode=v;if(v){chosen.clear();known.clear()}renderSites();loadCombined()}
+function renderSites(){
+ slist.innerHTML=[...known].sort((a,b)=>a.localeCompare(b)).map(n=>`<label><input type="checkbox" value="${esc(n)}"${chosen.has(n)?' checked':''}> ${esc(n)}</label>`).join('');
+ document.getElementById('sitetop').setAttribute('aria-pressed',topMode);
+ document.getElementById('sitesum').textContent=topMode?'Top 26 sites':!chosen.size?'All sites':chosen.size===1?[...chosen][0]:chosen.size+' sites selected';
+}
+function addSites(list){if(topMode)return;let ch=false;[...list,...chosen].forEach(n=>{if(!known.has(n)){known.add(n);ch=true}});if(ch)renderSites()}
+slist.onchange=e=>{const c=e.target;if(topMode)topMode=false;if(c.checked)chosen.add(c.value);else chosen.delete(c.value);renderSites();loadCombined()};
+document.getElementById('resetall').onclick=()=>{sevs=new Set([2,3]);topMode=false;chosen.clear();bflt='All';nbf='All';month=curMonth;document.getElementById('monthsel').value=month;sel.open=false;renderSites();loadCombined()};
+document.getElementById('sitetop').onclick=()=>{setTop(!topMode);if(topMode)sel.open=false};
+document.getElementById('siteclear').onclick=()=>{topMode=false;chosen.clear();renderSites();loadCombined()};
+document.addEventListener('click',e=>{if(!sel.contains(e.target))sel.open=false});
+document.querySelectorAll('#sevfilters .fbtn[data-s]').forEach(b=>b.onclick=()=>{
+ const s=+b.dataset.s;
+ if(sevs.has(s)){if(sevs.size>1)sevs.delete(s)}else sevs.add(s);
+ show();
+});
+
+// ---- combined Sev1 + Sev2 view ----
+const f2=v=>Number(v).toFixed(2);
+function mergeDt(a,b){
+ const n=a.n+b.n,wd=a.withdata+b.withdata,sum=a.sum+b.sum,hi=(b.max>a.max?b:a);
+ return {name:a.name,n,withdata:wd,sum,avg:wd?sum/wd:0,max:hi.max,maxt:hi.maxt,maxsite:hi.maxsite};
+}
+// Sev2 (<50%) and Sev3 share one shape, so selected severities add up column by column.
+function merge(R){
+ const L=[2,3].filter(s=>sevs.has(s)&&R[s]).map(s=>[s,R[s]]),D=L.map(x=>x[1]),A=D[0];
+ const sum=k=>D.reduce((t,d)=>t+(d[k]||0),0);
+ const rows=new Map();
+ D.forEach(d=>d.heat.sites.forEach((s,i)=>{const r=rows.get(s)||A.heat.cols.map(()=>0);d.heat.rows[i].forEach((v,j)=>{r[j]+=v});rows.set(s,r)}));
+ const sites=[...rows.keys()].sort((x,y)=>rows.get(y).at(-1)-rows.get(x).at(-1)||x.localeCompare(y));
+ const tag=(l,s)=>l.map(b=>({...b,sev:s}));
+ return {
+  generatedAt:D.map(d=>d.generatedAt).sort().at(-1),
+  allSites:[...new Set(D.flatMap(d=>d.allSites))],unmapped:[...new Set(D.flatMap(d=>d.unmappedAreas))],
+  tot:sum('tot'),bug:sum('bug'),nb:sum('nb'),goN:sum('goN'),cuN:sum('cuN'),ipN:sum('ipN'),
+  n:Object.fromEntries(L.map(([s,d])=>[s,d.tot])),
+  dtstats:A.dtstats.map(a=>D.slice(1).reduce((m,d)=>mergeDt(m,d.dtstats.find(x=>x.name===a.name)),a)),
+  heat:{sites,cols:A.heat.cols,rows:sites.map(s=>rows.get(s)),totals:A.heat.cols.map((_,j)=>sites.reduce((t,s)=>t+rows.get(s)[j],0)),bands:A.heat.bands},
+  buglist:L.flatMap(([s,d])=>d.buglist.map(b=>({...b,sev:s,dev:b.key,status:b.st,cls:b.out}))).sort((x,y)=>Number(y.t)-Number(x.t)),
+  nonbuglist:L.flatMap(([s,d])=>tag(d.nonbuglist,s)).sort((x,y)=>Number(y.t)-Number(x.t))
+ };
+}
+let cCharts=[],bflt='All',chartObs=null,chartJs=null;
+function loadChartJs(){return window.Chart?Promise.resolve():chartJs||(chartJs=new Promise((ok,no)=>{const e=document.createElement('script');e.src='https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js';e.onload=ok;e.onerror=()=>{chartJs=null;no()};document.head.appendChild(e)}))}
+// charts are built only when their panels scroll near the viewport; Chart.js itself is fetched on first need
+function lazyCharts(draw){
+ if(chartObs)chartObs.disconnect();
+ const go=()=>loadChartJs().then(draw).catch(()=>{});
+ const t=document.getElementById('cbugbar').closest('.panel');
+ if(!('IntersectionObserver' in window)){go();return}
+ chartObs=new IntersectionObserver(en=>{if(en.some(e=>e.isIntersecting)){chartObs.disconnect();go()}},{rootMargin:'400px'});
+ chartObs.observe(t);
+}
+const BFL=['All','Dev case closed (Done / Resolved)','Closed without a fix','Still open','No dev case','Impact area: GO owned','Impact area: Customer owned'];
+function paintCombined(C){
+ const pct=(a,b)=>b?(a/b*100).toFixed(1)+'%':'0.0%';
+ $('#csub').textContent=`Sev2 (impact below 50%) and Sev3 incidents, ${month?document.getElementById('monthsel').selectedOptions[0].textContent:'1 Jul 2026 to today'}, across the ${topMode?'top 26':C.allSites.length} sites${chosen.size?' (filtered to '+[...chosen].join(', ')+')':''}.`;
+ $('#ckpis').innerHTML=[[C.tot,'Tickets'],...Object.entries(C.n).map(([s,n])=>[n,SEVTAG[s]]),[C.bug+' ('+pct(C.bug,C.tot)+')','Software bug'],[C.nb+' ('+pct(C.nb,C.tot)+')','Non-bug'],[C.goN,'GO owned non-bug'],[C.cuN,'Customer owned non-bug']].map(k=>`<div class="kpi"><b>${k[0]}</b><span>${k[1]}</span></div>`).join('');
+ $('#cstats').innerHTML=C.dtstats.map(g=>`<div class="stat wide"><b>${g.n} <span style="font-size:13px;font-weight:500">of ${C.tot} (${pct(g.n,C.tot)})</span></b><span>${esc(g.name)}</span><dl><div><dt>Cumulative downtime</dt><dd>${f2(g.sum)} h</dd></div><div><dt>Average per ticket</dt><dd>${f2(g.avg)} h</dd></div><div><dt>Max</dt><dd>${f2(g.max)} h ${g.maxt?`<em>${esc(g.maxt)}, ${esc(g.maxsite)}</em>`:''}</dd></div></dl><span class="meta">Downtime recorded for ${g.withdata} of ${g.n}</span></div>`).join('');
+ const H=C.heat,mx=Math.max(1,...H.rows.flatMap(r=>r.slice(0,-1))),sub=H.cols.indexOf('Software bug subtotal (4 areas)'),ti=H.cols.length-1;
+ let h='<tr><th></th>'+H.bands.map(b=>`<th class="band ${b[0].startsWith('GO')?'go':b[0].startsWith('Cust')?'cu':''}" colspan="${b[1]}">${esc(b[0])}</th>`).join('')+'</tr><tr><th>Site</th>'+H.cols.map((g,j)=>`<th class="rot ${j===sub?'sub':''}"><div>${esc(g)}</div></th>`).join('')+'</tr>';
+ H.sites.forEach((s,i)=>{h+=`<tr><td>${esc(s)}</td>`+H.rows[i].map((v,j)=>j===sub||j===ti?`<td class="${j===sub?'sub':''}"><b>${v}</b></td>`:`<td class="h ${v?'':'zero'}" style="${v?`background:rgba(var(--heat),${(.12+.88*v/mx).toFixed(2)});color:${v/mx>.5?'#fff':'var(--ink)'}`:''}">${v}</td>`).join('')+'</tr>'});
+ h+='<tr class="totrow"><td>Total (all sites)</td>'+H.totals.map(v=>`<td>${v}</td>`).join('')+'</tr>';
+ $('#cheat').innerHTML=h;
+ $('#clead').textContent=`The rest were ${C.nb} non-bug tickets: ${C.goN} GO owned and ${C.cuN} customer owned`+(C.ipN?` (${C.ipN} still in progress: Technical Impact Area not set yet)`:'');
+ cCharts.forEach(c=>c.destroy());cCharts=[];
+ lazyCharts(()=>{
+  const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim(),tx=css('--muted'),gr=css('--grid'),ax=(e={})=>Object.assign({ticks:{color:tx},grid:{color:gr}},e);
+  const PAL=['#1f4e79','#c9741a','#2f7d5b','#a8302a','#7a5c99','#4aa3b5','#b8a13a','#8a8f98','#d98ca3','#5b7f3a','#3c3c8f','#b5651d','#2a9d8f','#9c6b4e'];
+  Chart.defaults.color=tx;Chart.defaults.font.family='"Public Sans",system-ui,Arial,sans-serif';
+  const cnt=(arr,f)=>{const m={};arr.forEach(x=>{const k=f(x);m[k]=(m[k]||0)+1});return Object.entries(m).sort((a,b)=>b[1]-a[1])};
+  const ar=cnt(C.buglist,b=>b.area),gm=cnt(C.buglist,b=>b.proj==='\u2014'?'No dev case':b.proj),gt=gm.reduce((t,g)=>t+g[1],0);
+  const ob=o=>cnt(L0.filter(b=>b.owner===o),b=>b.cat),L0=C.nonbuglist,go=ob('GO owned'),cu=ob('Customer owned');
+  $('#cgotitle').textContent='GO owned: '+go.reduce((t,x)=>t+x[1],0)+' non-bug tickets';$('#ccutitle').textContent='Customer owned: '+cu.reduce((t,x)=>t+x[1],0)+' non-bug tickets';
+  const hb=(id,d,c)=>cCharts.push(new Chart($(id),{type:'bar',data:{labels:d.map(x=>x[0]),datasets:[{data:d.map(x=>x[1]),backgroundColor:c}]},options:{indexAxis:'y',maintainAspectRatio:false,scales:{x:ax(),y:ax({grid:{display:false}})},plugins:{legend:{display:false}}}}));
+  hb('#cgobar',go,PAL[0]);hb('#ccubar',cu,PAL[1]);
+  cCharts.push(new Chart($('#cbugbar'),{type:'bar',data:{labels:ar.map(x=>x[0]),datasets:[{data:ar.map(x=>x[1]),backgroundColor:PAL[0]}]},options:{indexAxis:'y',maintainAspectRatio:false,scales:{x:ax(),y:ax({grid:{display:false}})},plugins:{legend:{display:false}}}}));
+  cCharts.push(new Chart($('#cgmdonut'),{type:'doughnut',data:{labels:gm.map(x=>x[0]),datasets:[{data:gm.map(x=>x[1]),backgroundColor:PAL,borderColor:css('--panel')}]},options:{maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:11}}},tooltip:{callbacks:{label:c=>c.label+': '+c.parsed+' ('+pct(c.parsed,gt)+')'}}}}}));
+ });
+ const sevTag=s=>`<span class="tag ${s===2?'o':'y'}">${SEVTAG[s]}</span>`;
+ $('#cbugstats').innerHTML=[[C.buglist.length,'bug tickets'],...[2,3].filter(s=>sevs.has(s)).map(s=>[C.buglist.filter(b=>b.sev===s).length,SEVTAG[s]])].map(s=>`<div class="stat"><b>${s[0]}</b><span>${s[1]}</span></div>`).join('');
+ const BL=C.buglist,bm=(b,f)=>f==='All'||b.out===f||(f==='Impact area: GO owned'&&b.impg==='GO owned')||(f==='Impact area: Customer owned'&&b.impg==='Customer owned');
+ if(!BFL.includes(bflt))bflt='All';
+ $('#cbugfilters').innerHTML=BFL.filter(f=>f==='All'||f.startsWith('Impact')||BL.some(b=>b.out===f)).map(f=>`<button class="fbtn" type="button" aria-pressed="${f===bflt}" data-f="${esc(f)}">${esc(f)}${f==='All'?'':' ('+BL.filter(b=>bm(b,f)).length+')'}</button>`).join('');
+ document.querySelectorAll('#cbugfilters .fbtn').forEach(b=>b.onclick=()=>{bflt=b.dataset.f;paintCombined(C)});
+ $('#cbuglist').innerHTML='<tr><th class="l">Severity</th><th class="l">Ticket</th><th class="l">Site</th><th class="l">Technical Impact Area</th><th class="l">Dev case</th><th class="l">Jira status</th><th class="l">Classification</th></tr>'+BL.filter(b=>bm(b,bflt)).map(b=>`<tr><td class="l">${sevTag(b.sev)}</td><td class="l">${b.url?`<a href="${esc(b.url)}" target="_blank" rel="noopener">${esc(b.t)}</a>`:esc(b.t)}</td><td class="l">${esc(b.site)}</td><td class="l">${esc(b.area)}</td><td class="l">${esc(b.dev)}</td><td class="l">${esc(b.status)}</td><td class="l"><span class="tag n">${esc(b.cls)}</span></td></tr>`).join('');
+ const OWN=['GO owned','Customer owned','In progress'],L=C.nonbuglist,n=o=>L.filter(b=>b.owner===o).length;
+ $('#cnbstats').innerHTML=[[L.length,'non-bug tickets'],...[2,3].filter(s=>sevs.has(s)).map(s=>[L.filter(b=>b.sev===s).length,SEVTAG[s]]),...OWN.map(o=>[n(o),o.toLowerCase()])].map(s=>`<div class="stat"><b>${s[0]}</b><span>${s[1]}</span></div>`).join('');
+ const cats=[...new Set(L.map(b=>b.cat))],nm=f=>L.filter(b=>b.owner===f||b.cat===f).length;
+ const fl=['All',...OWN.filter(o=>n(o)),...cats];if(!fl.includes(nbf))nbf='All';
+ $('#cnbfilters').innerHTML=fl.map(f=>`<button class="fbtn" type="button" aria-pressed="${f===nbf}" data-f="${esc(f)}">${esc(f)}${f==='All'?'':' ('+nm(f)+')'}</button>`).join('');
+ document.querySelectorAll('#cnbfilters .fbtn').forEach(b=>b.onclick=()=>{nbf=b.dataset.f;paintCombined(C)});
+ $('#cnblist').innerHTML='<tr><th class="l">Severity</th><th class="l">Ticket</th><th class="l">Site</th><th class="l">Technical Impact Area</th><th class="l">Category</th><th class="l">Owner</th><th>Downtime (h)</th></tr>'+L.filter(b=>nbf==='All'||b.owner===nbf||b.cat===nbf).map(b=>`<tr><td class="l">${sevTag(b.sev)}</td><td class="l">${b.url?`<a href="${esc(b.url)}" target="_blank" rel="noopener">${esc(b.t)}</a>`:esc(b.t)}</td><td class="l">${esc(b.site)}</td><td class="l">${esc(b.area)}</td><td class="l"><span class="tag ${b.owner==='GO owned'?'g':b.owner==='Customer owned'?'o':'n'}">${esc(b.cat)}</span></td><td class="l">${esc(b.owner)}</td><td>${b.dt==null?'\u2014':f2(b.dt)}</td></tr>`).join('');
+ $('#clive').innerHTML=`Live from Salesforce and Jira, refreshed ${esc(new Date(C.generatedAt).toLocaleString())}.`+(C.unmapped.length?` <details class="unm"><summary>${C.unmapped.length} unmapped areas counted as Inconclusive</summary>${esc(C.unmapped.join(', '))}</details>`:'');
+}
+async function loadCombined(retry=true){
+ const seq=++cseq,to=new Date(Date.now()+(5.5/24+1)*86400000).toISOString().slice(0,10),mr=monthRange(month);
+ const q=`?from=${mr?mr.from:'2026-07-01'}&to=${mr?mr.to:to}&scope=${scopeP()}`+siteQ();
+ $('#clive').textContent='Loading live data from Salesforce and Jira\u2026';comb.classList.add('sk');
+ try{
+  const rs=await Promise.all([fetch('/api/non-critsit/sev2'+q),fetch('/api/non-critsit/sev3'+q)]);
+  for(const r of rs)if(!r.ok)throw new Error((await r.json().catch(()=>({}))).error||r.status);
+  const [A,B]=await Promise.all(rs.map(r=>r.json()));
+  if(seq!==cseq)return;
+  raw={2:A,3:B};document.querySelectorAll('#sevfilters .fbtn[data-s]').forEach(b=>b.setAttribute('aria-pressed',sevs.has(+b.dataset.s)));
+  cdata=merge(raw);addSites(cdata.allSites);paintCombined(cdata);comb.classList.remove('sk');
+ }catch(e){
+  if(retry&&e instanceof TypeError&&seq===cseq){setTimeout(()=>{if(seq===cseq)loadCombined(false)},1000);return}
+  if(seq===cseq){comb.classList.remove('sk');$('#clive').textContent='Live Salesforce data unavailable ('+e.message+').'}
+ }
+}
+loadCombined();
+</script>
+</body></html>

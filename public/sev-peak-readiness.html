@@ -30,6 +30,7 @@ section[hidden]{display:none}
 .c7{grid-column:span 7}.c5{grid-column:span 5}.c6{grid-column:span 6}.c12{grid-column:span 12}
 @media(max-width:900px){.c7,.c5,.c6{grid-column:span 12}}
 h2{font-size:16px;margin:0 0 4px}
+.rmore{background:none;border:0;padding:0;margin:0 0 10px;color:var(--accent);font:inherit;font-size:13px;font-weight:600;cursor:pointer;text-decoration:underline}.rmore:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .note{color:var(--muted);font-size:13px;margin:0 0 12px;max-width:84ch}
 .chart{position:relative;height:340px}.chart.short{height:260px}.chart.tall{height:520px}.chart.xtall{height:640px}.stat.wide{min-width:260px;flex:1}.stat dl{margin:8px 0 6px;display:grid;gap:2px}.stat dl div{display:flex;justify-content:space-between;gap:16px;font-size:13px}.stat dt{color:var(--muted)}.stat dd{margin:0;font-weight:600;text-align:right}.stat dd em{font-style:normal;font-weight:400;color:var(--muted);font-size:12px;display:block}.stat i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px}.lead h3{font-size:20px;line-height:1.3;margin:12px 0 4px;max-width:40em}.lead p{margin:0;color:var(--muted);max-width:84ch}
 .scroll{overflow-x:auto}.scroll.tall{max-height:480px;overflow-y:auto}
@@ -141,15 +142,17 @@ nav[role=tablist] button[aria-selected="true"]{border-bottom-color:#22c55e}
 </head>
 <body>
 <div class="cs-decor" aria-hidden="true"><span class="cs-blob a"></span><span class="cs-blob b"></span><span class="cs-blob c"></span><span class="cs-gridbg"></span></div>
-<div class="cs-topbar"><div class="cs-brand"><img src="go-logo.jpg" alt="" width="34" height="34"><div><b>CritSit Dashboard</b><span>GreyOrange Service &middot; Live Operations</span></div></div><div class="cs-pills" role="navigation" aria-label="Primary"><a href="/">Home</a><a href="/software-stability">Software Stability</a><a href="/ticket-health">Ticket Health</a><!-- <a href="/sev1-peak-readiness">Sev 1 Peak Readiness</a><a href="/sev2-peak-readiness">Sev 2 Peak Readiness</a> --><a href="/sev-peak-readiness" class="is-active">CritSit Data</a><!-- <a href="/automation-deliverables">Automation Deliverables</a> --></div><div class="cs-meta"><span class="cs-env"><i></i>Production</span><button class="cs-refresh" type="button" onclick="location.reload()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 11A8.1 8.1 0 0 0 4.5 9M4 5v4h4M4 13a8.1 8.1 0 0 0 15.5 2M20 19v-4h-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Refresh</span></button></div></div>
+<div class="cs-topbar"><div class="cs-brand"><img src="go-logo.jpg" alt="" width="34" height="34"><div><b>CritSit Dashboard</b><span>GreyOrange Service &middot; Live Operations</span></div></div><div class="cs-pills" role="navigation" aria-label="Primary"><a href="/">Home</a><a href="/software-stability">Software Stability</a><a href="/ticket-health">Ticket Health</a><!-- <a href="/sev1-peak-readiness">Sev 1 Peak Readiness</a><a href="/sev2-peak-readiness">Sev 2 Peak Readiness</a> --><a href="/sev-peak-readiness" class="is-active">CritSit Data</a><a href="/non-critsit-data">Non-CritSit Data</a><!-- <a href="/automation-deliverables">Automation Deliverables</a> --></div><div class="cs-meta"><span class="cs-env"><i></i>Production</span><button class="cs-refresh" type="button" onclick="location.reload()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 11A8.1 8.1 0 0 0 4.5 9M4 5v4h4M4 13a8.1 8.1 0 0 0 15.5 2M20 19v-4h-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Refresh</span></button></div></div>
 <div class="sevbar">
 <h1>CritSit data</h1>
-<div class="filters" id="sevfilters" role="group" aria-label="Severity (multi-select)"><button class="fbtn" type="button" aria-pressed="true" data-s="1">Sev 1</button><button class="fbtn" type="button" aria-pressed="true" data-s="2">Sev 2</button><label for="monthsel">Month</label><select id="monthsel" aria-label="Month"></select><label for="sitesel">Site</label><details class="msel" id="sitesel"><summary id="sitesum">All sites</summary><div class="mpanel"><button type="button" class="fbtn" id="siteclear">Clear (all sites)</button><button type="button" class="fbtn" id="sitetop" aria-pressed="false" style="margin-left:6px">Top 26 sites</button><div id="sitelist"></div></div></details><button class="fbtn" type="button" id="resetall">Reset filters</button></div>
+<div class="filters" id="sevfilters" role="group" aria-label="Severity (multi-select)"><button class="fbtn" type="button" aria-pressed="true" data-s="1">Sev 1</button><button class="fbtn" type="button" aria-pressed="true" data-s="2">Sev 2 (Impact ≥ 50%)</button><label for="monthsel">Month</label><select id="monthsel" aria-label="Month"></select><label for="sitesel">Site</label><details class="msel" id="sitesel"><summary id="sitesum">All sites</summary><div class="mpanel"><button type="button" class="fbtn" id="siteclear">Clear (all sites)</button><button type="button" class="fbtn" id="sitetop" aria-pressed="false" style="margin-left:6px">Top 26 sites</button><div id="sitelist"></div></div></details><button class="fbtn" type="button" id="resetall">Reset filters</button></div>
 <p class="sevnote" id="sitenote" hidden>Showing live data for the selected site only. The Prevention plan tab is a saved snapshot, filtered to the site.</p>
 </div>
 <div id="combined" hidden>
 <p class="sub" id="csub"></p>
-<p class="sub" id="clive">Loading live data from Salesforce and Jira…</p>
+<p class="sub" id="cextra" hidden></p>
+<p class="sub" id="clive" hidden>Loading live data from Salesforce and Jira…</p>
+<button type="button" class="rmore" id="rmore" aria-expanded="false">Read more</button>
 <div class="kpis" id="ckpis"></div>
 <div class="grid">
 <div class="panel c12"><h2>Combined cases by site</h2><p class="note">Sev1 and Sev2 added together, by site and Technical Impact Area. Software Bug follows each severity's own bug rule. The bottom row is the total of each area across all sites.</p><div class="stats" id="cstats"></div><div class="scroll"><table id="cheat"></table></div></div>
@@ -264,10 +267,12 @@ function lazyCharts(draw){
  chartObs.observe(t);
 }
 const BFL=['All','Dev case closed (Done / Resolved)','Closed without a fix','Still open','No dev case','Impact area: GO owned','Impact area: Customer owned'];
+document.getElementById('rmore').onclick=function(){const o=this.getAttribute('aria-expanded')!=='true';this.setAttribute('aria-expanded',o);this.textContent=o?'Read less':'Read more';document.getElementById('cextra').hidden=!o;document.getElementById('clive').hidden=!o};
 function paintCombined(C){
  const pct=(a,b)=>b?(a/b*100).toFixed(1)+'%':'0.0%';
- $('#csub').textContent=`Sev1 and Sev2 incidents combined, ${month?document.getElementById('monthsel').selectedOptions[0].textContent:'1 Jul 2026 to today'}, across the ${topMode?'top 26':C.allSites.length} sites${chosen.size?' (filtered to '+[...chosen].join(', ')+')':''}. Peak start is assumed to be 23 Nov 2026.`;
- $('#ckpis').innerHTML=[[C.tot,'Sev1 + Sev2 tickets'],[C.s1,'Sev1'],[C.s2,'Sev2'],[C.bug+' ('+pct(C.bug,C.tot)+')','Software bug'],[C.nb+' ('+pct(C.nb,C.tot)+')','Non-bug'],[C.goN,'GO owned non-bug'],[C.cuN,'Customer owned non-bug']].map(k=>`<div class="kpi"><b>${k[0]}</b><span>${k[1]}</span></div>`).join('');
+ $('#csub').textContent=`${C.tot} Sev1 and Sev2 incidents combined (${C.s1} Sev1, ${C.s2} Sev2 with impact of 50% or more), ${month?document.getElementById('monthsel').selectedOptions[0].textContent:'1 Jul 2026 to today'}, across the ${topMode?'top 26':C.allSites.length} sites${chosen.size?' (filtered to '+[...chosen].join(', ')+')':''}.`;
+ $('#cextra').textContent='Sev2 incidents below 50% impact are excluded (see Non-CritSit Data). Peak start is assumed to be 23 Nov 2026.';
+ $('#ckpis').innerHTML=[[C.tot,'Sev1 + Sev2 tickets'],[C.s1,'Sev1'],[C.s2,'Sev2 (Impact ≥ 50%)'],[C.bug+' ('+pct(C.bug,C.tot)+')','Software bug'],[C.nb+' ('+pct(C.nb,C.tot)+')','Non-bug'],[C.goN,'GO owned non-bug'],[C.cuN,'Customer owned non-bug']].map(k=>`<div class="kpi"><b>${k[0]}</b><span>${k[1]}</span></div>`).join('');
  $('#cstats').innerHTML=C.dtstats.map(g=>`<div class="stat wide"><b>${g.n} <span style="font-size:13px;font-weight:500">of ${C.tot} (${pct(g.n,C.tot)})</span></b><span>${esc(g.name)}</span><dl><div><dt>Cumulative downtime</dt><dd>${f2(g.sum)} h</dd></div><div><dt>Average per ticket</dt><dd>${f2(g.avg)} h</dd></div><div><dt>Max</dt><dd>${f2(g.max)} h ${g.maxt?`<em>${esc(g.maxt)}, ${esc(g.maxsite)}</em>`:''}</dd></div></dl><span class="meta">Downtime recorded for ${g.withdata} of ${g.n}</span></div>`).join('');
  const H=C.heat,mx=Math.max(1,...H.rows.flatMap(r=>r.slice(0,-1))),sub=H.cols.indexOf('Software bug subtotal (4 areas)'),ti=H.cols.length-1;
  let h='<tr><th></th>'+H.bands.map(b=>`<th class="band ${b[0].startsWith('GO')?'go':b[0].startsWith('Cust')?'cu':''}" colspan="${b[1]}">${esc(b[0])}</th>`).join('')+'</tr><tr><th>Site</th>'+H.cols.map((g,j)=>`<th class="rot ${j===sub?'sub':''}"><div>${esc(g)}</div></th>`).join('')+'</tr>';
@@ -289,7 +294,7 @@ function paintCombined(C){
   cCharts.push(new Chart($('#cbugbar'),{type:'bar',data:{labels:ar.map(x=>x[0]),datasets:[{data:ar.map(x=>x[1]),backgroundColor:PAL[0]}]},options:{indexAxis:'y',maintainAspectRatio:false,scales:{x:ax(),y:ax({grid:{display:false}})},plugins:{legend:{display:false}}}}));
   cCharts.push(new Chart($('#cgmdonut'),{type:'doughnut',data:{labels:gm.map(x=>x[0]),datasets:[{data:gm.map(x=>x[1]),backgroundColor:PAL,borderColor:css('--panel')}]},options:{maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:11}}},tooltip:{callbacks:{label:c=>c.label+': '+c.parsed+' ('+pct(c.parsed,gt)+')'}}}}}));
  });
- const sevTag=s=>`<span class="tag ${s===1?'y':'o'}">Sev${s}</span>`;
+ const sevTag=s=>`<span class="tag ${s===1?'y':'o'}">Sev${s}${s===2?' (Impact ≥ 50%)':''}</span>`;
  $('#cbugstats').innerHTML=[[C.buglist.length,'bug tickets'],[C.buglist.filter(b=>b.sev===1).length,'Sev1'],[C.buglist.filter(b=>b.sev===2).length,'Sev2']].map(s=>`<div class="stat"><b>${s[0]}</b><span>${s[1]}</span></div>`).join('');
  const BL=C.buglist,bm=(b,f)=>f==='All'||b.out===f||(f==='Impact area: GO owned'&&b.impg==='GO owned')||(f==='Impact area: Customer owned'&&b.impg==='Customer owned');
  if(!BFL.includes(bflt))bflt='All';
@@ -303,7 +308,7 @@ function paintCombined(C){
  $('#cnbfilters').innerHTML=fl.map(f=>`<button class="fbtn" type="button" aria-pressed="${f===nbf}" data-f="${esc(f)}">${esc(f)}${f==='All'?'':' ('+nm(f)+')'}</button>`).join('');
  document.querySelectorAll('#cnbfilters .fbtn').forEach(b=>b.onclick=()=>{nbf=b.dataset.f;paintCombined(C)});
  $('#cnblist').innerHTML='<tr><th class="l">Severity</th><th class="l">Ticket</th><th class="l">Site</th><th class="l">Technical Impact Area</th><th class="l">Category</th><th class="l">Owner</th><th>Downtime (h)</th></tr>'+L.filter(b=>nbf==='All'||b.owner===nbf||b.cat===nbf).map(b=>`<tr><td class="l">${sevTag(b.sev)}</td><td class="l">${b.url?`<a href="${esc(b.url)}" target="_blank" rel="noopener">${esc(b.t)}</a>`:esc(b.t)}</td><td class="l">${esc(b.site)}</td><td class="l">${esc(b.area)}</td><td class="l"><span class="tag ${b.owner==='GO owned'?'g':b.owner==='Customer owned'?'o':'n'}">${esc(b.cat)}</span></td><td class="l">${esc(b.owner)}</td><td>${b.dt==null?'\u2014':f2(b.dt)}</td></tr>`).join('');
- $('#clive').textContent=`Live from Salesforce and Jira, refreshed ${new Date(C.generatedAt).toLocaleString()}.`+(C.unmapped.length?` Unmapped Technical Impacted Areas counted as Inconclusive: ${C.unmapped.join(', ')}.`:'');
+ $('#clive').textContent=`Live from Salesforce (cases, Technical Impacted Area, impact percentage) and Jira (dev case status, GM Team), refreshed ${new Date(C.generatedAt).toLocaleString()}.`+(C.unmapped.length?` ${C.unmapped.length} Technical Impacted Area${C.unmapped.length>1?'s':''} not mapped to a category, counted as Inconclusive: ${C.unmapped.join(', ')}.`:'');
 }
 async function loadCombined(retry=true){
  const seq=++cseq,to=new Date(Date.now()+(5.5/24+1)*86400000).toISOString().slice(0,10),mr=monthRange(month);

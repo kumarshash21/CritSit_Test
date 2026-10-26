@@ -415,7 +415,7 @@ export async function getTrendDayDetail(dateStr, timeZone = 'UTC') {
  * created in [startDate, endDate) (YYYY-MM-DD, IST day boundaries) at the
  * given Account_Name__c values. `minImpact` adds Impact_Percentage__c >= n.
  */
-async function getPeakCases(severity, startDate, endDate, accounts, { minImpact, extraFields = [] } = {}) {
+async function getPeakCases(severity, startDate, endDate, accounts, { minImpact, maxImpact, extraFields = [] } = {}) {
   const fields = [
     'Id', 'CaseNumber', 'CreatedDate', 'Account_Name__c', 'Technical_Impacted_Area__c',
     'Downtime__c', 'Jira_Ticket_Id__c', ...extraFields,
@@ -425,6 +425,8 @@ async function getPeakCases(severity, startDate, endDate, accounts, { minImpact,
     `WHERE Highest_Severity__c = ${soqlString(severity)} AND Type = 'Incident' ` +
     `AND Category__c = 'Software' ` +
     (minImpact != null ? `AND Impact_Percentage__c >= ${Number(minImpact)} ` : '') +
+    // Below the threshold, including cases with no impact percentage recorded.
+    (maxImpact != null ? `AND (Impact_Percentage__c < ${Number(maxImpact)} OR Impact_Percentage__c = null) ` : '') +
     `AND CreatedDate >= ${startDate}T00:00:00+05:30 AND CreatedDate < ${endDate}T00:00:00+05:30 ` +
     `AND Account_Name__c IN (${accounts.map(soqlString).join(',')})`;
 
@@ -450,6 +452,13 @@ export const getSev2PeakCases = (startDate, endDate, accounts) =>
     minImpact: 50,
     extraFields: ['Subject', 'Status', 'Operational_Impacted_Area__c', 'Impact_Percentage__c'],
   });
+
+// Non-CritSit Data page: Sev2 below 50% impact, and every Sev3.
+const NON_CRIT_FIELDS = ['Subject', 'Status', 'Operational_Impacted_Area__c', 'Impact_Percentage__c'];
+export const getNonCritSev2Cases = (startDate, endDate, accounts) =>
+  getPeakCases('Severity 2', startDate, endDate, accounts, { maxImpact: 50, extraFields: NON_CRIT_FIELDS });
+export const getNonCritSev3Cases = (startDate, endDate, accounts) =>
+  getPeakCases('Severity 3', startDate, endDate, accounts, { extraFields: NON_CRIT_FIELDS });
 
 // ---------------------------------------------------------------------------
 // Ticket Inflow Health (Ticket Health page). Tickets are created in

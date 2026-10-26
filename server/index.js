@@ -11,7 +11,7 @@ import {
 import { dayKeyInZone, isValidTimeZone, zonedMidnightUtc } from './tz.js';
 import { computeTeoKpis, currentIstYearMonth } from './teoKpi.js';
 import { getSev1Peak, isSev1Site } from './sev1Peak.js';
-import { getSev2Peak, isSev2Site } from './sev2Peak.js';
+import { getSev2Peak, getPeak, isSev2Site } from './sev2Peak.js';
 import { getPodMap, buildPodLookup, accountPod } from './podMap.js';
 import {
   getUptimeData, getMtbfData, getStabilityFilterOptions, getAllSites,
@@ -353,6 +353,26 @@ app.get('/api/sev2-peak', async (req, res) => {
     const all = req.query.scope === 'all';
     if (site.some((x) => !isSev2Site(x, all))) return res.status(400).json({ error: 'unknown site' });
     res.json(await getSev2Peak(from, to, { refresh: req.query.refresh === '1', site, all }));
+  } catch (err) {
+    console.error(err);
+    res.status(502).json({ error: err.message });
+  }
+});
+
+// Non-CritSit Data page: Sev2 below 50% impact (nc-sev2) and Sev3 (nc-sev3).
+app.get('/api/non-critsit/:kind', async (req, res) => {
+  try {
+    const kind = `nc-${req.params.kind}`;
+    if (!['nc-sev2', 'nc-sev3'].includes(kind)) return res.status(404).json({ error: 'unknown kind' });
+    const iso = /^\d{4}-\d{2}-\d{2}$/;
+    const { from, to } = req.query;
+    if ((from && !iso.test(from)) || (to && !iso.test(to))) {
+      return res.status(400).json({ error: 'from/to must be YYYY-MM-DD (to is exclusive)' });
+    }
+    const site = [].concat(req.query.site || []).filter((x) => typeof x === 'string' && x);
+    const all = req.query.scope === 'all';
+    if (site.some((x) => !isSev2Site(x, all))) return res.status(400).json({ error: 'unknown site' });
+    res.json(await getPeak(kind, from, to, { refresh: req.query.refresh === '1', site, all }));
   } catch (err) {
     console.error(err);
     res.status(502).json({ error: err.message });

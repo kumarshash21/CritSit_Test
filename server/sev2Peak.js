@@ -1,6 +1,6 @@
 // Builds the data behind the Sev2 Peak Readiness page (everything except the
 // hand-written Prevention plan) from Salesforce Sev2 cases + Jira dev cases.
-import { getSev2PeakCases } from './salesforce.js';
+import { getSev2PeakCases, getNonCritSev2Cases, getNonCritSev3Cases } from './salesforce.js';
 import { fetchIssuesByIds } from './jira.js';
 import { SEV2_SITES, ALL_SITES } from './sev1Sites.js';
 
@@ -68,9 +68,9 @@ const weekLabel = (ymd) => `${Number(ymd.slice(8))} ${MON[Number(ymd.slice(5, 7)
 const downtimeHrs = (c) => (c.Downtime__c == null || !c.Impact_Percentage__c
   ? null : c.Downtime__c / 60 / (c.Impact_Percentage__c / 100));
 
-async function loadSev2Rows(from, to, sites) {
+async function loadSev2Rows(from, to, sites, fetchCases = getSev2PeakCases) {
   const siteOf = new Map(sites.flatMap((s) => s.accounts.map((a) => [a, s.name])));
-  const cases = await getSev2PeakCases(from, to, [...siteOf.keys()]);
+  const cases = await fetchCases(from, to, [...siteOf.keys()]);
   const jira = new Map((await fetchIssuesByIds(cases.map((c) => c.Jira_Ticket_Id__c))).map((i) => [i.id, i]));
 
   const unmapped = new Set();
@@ -89,7 +89,7 @@ async function loadSev2Rows(from, to, sites) {
   return { rows, unmapped };
 }
 
-function buildSev2Peak(all, from, to, site, sites) {
+function buildSev2Peak(all, from, to, site, sites, label = 'Sev2') {
   const { unmapped } = all;
   const pick = new Set([].concat(site || []));
   const rows = pick.size ? all.rows.filter((r) => pick.has(r.site)) : all.rows;
@@ -165,7 +165,7 @@ function buildSev2Peak(all, from, to, site, sites) {
       dtStat('GO owned', nonBugs.filter((r) => r.group.owner === 'go')),
       dtStat('Customer owned', nonBugs.filter((r) => r.group.owner === 'cu')),
     ],
-    dtall: dtStat('All Sev2', rows),
+    dtall: dtStat(`All ${label}`, rows),
     ownerbars: { go: ownerbar('go'), cu: ownerbar('cu') },
     heat: {
       sites: order.map((o) => o.name), cols: COLS.map((c) => HEAT_LABEL[c] || c), rows: order.map((o) => o.vals), totals,
@@ -183,15 +183,24 @@ function buildSev2Peak(all, from, to, site, sites) {
 const TTL_MS = 10 * 60 * 1000;
 const cache = new Map();
 export const isSev2Site = (name, all = false) => (all ? ALL_SITES : SEV2_SITES).some((s) => s.name === name);
-export async function getSev2Peak(from, to, { refresh = false, site = [], all = false } = {}) {
+
+// kind: 'sev2' (CritSit Sev2, impact >= 50), 'nc-sev2' (Sev2 below 50% impact) or 'nc-sev3' (Sev3).
+const KINDS = {
+  sev2: { fetchCases: getSev2PeakCases, label: 'Sev2' },
+  'nc-sev2': { fetchCases: getNonCritSev2Cases, label: 'Sev2' },
+  'nc-sev3': { fetchCases: getNonCritSev3Cases, label: 'Sev3' },
+};
+export async function getPeak(kind, from, to, { refresh = false, site = [], all = false } = {}) {
+  const { fetchCases, label } = KINDS[kind];
   const sites = all ? ALL_SITES : SEV2_SITES;
   const f = from || DEFAULT_FROM;
   const t = to || new Date(Date.now() + IST_MS + 86400000).toISOString().slice(0, 10);
-  const key = `${f}|${t}|${all ? 'all' : ''}`;
+  const key = `${kind}|${f}|${t}|${all ? 'all' : ''}`;
   let hit = cache.get(key);
   if (refresh || !hit || Date.now() - hit.at >= TTL_MS) {
-    hit = { at: Date.now(), all: await loadSev2Rows(f, t, sites) };
+    hit = { at: Date.now(), all: await loadSev2Rows(f, t, sites, fetchCases) };
     cache.set(key, hit);
   }
-  return buildSev2Peak(hit.all, f, t, site, sites);
+  return buildSev2Peak(hit.all, f, t, site, sites, label);
 }
+export const getSev2Peak = (from, to, opts) => getPeak('sev2', from, to, opts);
