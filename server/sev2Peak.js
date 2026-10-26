@@ -25,6 +25,8 @@ const INCONCLUSIVE = GROUPS.find((g) => g.col === 'Inconclusive');
 const BUG_COL = 'Software bug';
 // Cases whose Technical Impacted Area isn't set yet (support fills it in after investigating).
 const INPROGRESS = { col: 'In progress', owner: 'ip' };
+// Heat-map header labels only; the column names above stay the matching keys.
+const HEAT_LABEL = Object.fromEntries(['PPS Strategy', 'Congestion', 'PPF', 'Order Pool', 'OWT'].map((c) => [c, `R2R - ${c}`]));
 const COLS = [BUG_COL, ...GROUPS.map((g) => g.col), INPROGRESS.col, 'Total'];
 
 const OUT_CLOSED = 'Dev case closed (Done / Resolved)';
@@ -166,7 +168,7 @@ function buildSev2Peak(all, from, to, site, sites) {
     dtall: dtStat('All Sev2', rows),
     ownerbars: { go: ownerbar('go'), cu: ownerbar('cu') },
     heat: {
-      sites: order.map((o) => o.name), cols: COLS, rows: order.map((o) => o.vals), totals,
+      sites: order.map((o) => o.name), cols: COLS.map((c) => HEAT_LABEL[c] || c), rows: order.map((o) => o.vals), totals,
       bands: [[BUG_COL, 1], ['GO owned', GROUPS.filter((g) => g.owner === 'go').length],
         ['Customer owned', GROUPS.filter((g) => g.owner === 'cu').length], ['Pending', 1], ['', 1]],
     },
