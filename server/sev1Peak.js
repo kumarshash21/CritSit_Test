@@ -109,6 +109,7 @@ async function loadSev1Rows(from, to, sites) {
       t: ticketNo(c.CaseNumber), url: c.__caseUrl, site: siteOf.get(c.Account_Name__c), area, isBug, group,
       hrs: c.Downtime__c == null ? null : c.Downtime__c / 60, // Downtime__c is in minutes
       jira: jiraById.get(String(c.Jira_Ticket_Id__c)),
+      ou: c.OneUptime_Incident_Number__c || '—', ouUrl: c.OneUptime_Case_Url__c || '', ouSt: c.OneUptime_Status__c || '—',
     };
   });
 
@@ -133,7 +134,7 @@ function buildSev1Peak(all, from, to, site, sites) {
 
   // Bug list (Jira classification)
   const buglist = bugs.map((r) => ({
-    t: r.t, url: r.url, site: r.site, area: r.area, ...classify(r.jira),
+    t: r.t, url: r.url, site: r.site, area: r.area, ou: r.ou, ouUrl: r.ouUrl, ouSt: r.ouSt, ...classify(r.jira),
   })).sort((a, b) => Number(b.t) - Number(a.t));
   // Non-bug list: category = merged heatmap column, plus Jira dev case fields where one exists.
   const OWNER = { go: 'GO owned', cu: 'Customer owned', ip: 'In progress' };

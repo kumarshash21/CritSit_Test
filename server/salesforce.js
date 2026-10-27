@@ -418,7 +418,7 @@ export async function getTrendDayDetail(dateStr, timeZone = 'UTC') {
 async function getPeakCases(severity, startDate, endDate, accounts, { minImpact, maxImpact, extraFields = [] } = {}) {
   const fields = [
     'Id', 'CaseNumber', 'CreatedDate', 'Account_Name__c', 'Technical_Impacted_Area__c',
-    'Downtime__c', 'Jira_Ticket_Id__c', ...extraFields,
+    'Downtime__c', 'Jira_Ticket_Id__c', 'OneUptime_Incident_Number__c', 'OneUptime_Case_Url__c', 'OneUptime_Status__c', ...extraFields,
   ];
   const soql =
     `SELECT ${fields.join(', ')} FROM Case ` +

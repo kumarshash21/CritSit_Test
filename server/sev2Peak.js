@@ -84,6 +84,7 @@ async function loadSev2Rows(from, to, sites, fetchCases = getSev2PeakCases) {
       t: ticketNo(c.CaseNumber), url: c.__caseUrl, site: siteOf.get(c.Account_Name__c), area, dev, isBug, group,
       subj: c.Subject || '', created: c.CreatedDate, solved: c.Status === 'Solved' || c.Status === 'Closed',
       opa: c.Operational_Impacted_Area__c || 'Not set', hrs: downtimeHrs(c),
+      ou: c.OneUptime_Incident_Number__c || '—', ouUrl: c.OneUptime_Case_Url__c || '', ouSt: c.OneUptime_Status__c || '—',
     };
   });
   return { rows, unmapped };
@@ -112,7 +113,7 @@ function buildSev2Peak(all, from, to, site, sites, label = 'Sev2') {
     const st = f?.status?.name || '—';
     const inArea = BUG_AREAS.has(r.area);
     return {
-      t: r.t, url: r.url, site: r.site, area: r.area, subj: r.subj, proj: f?.project?.key || '—',
+      t: r.t, url: r.url, site: r.site, area: r.area, ou: r.ou, ouUrl: r.ouUrl, ouSt: r.ouSt, subj: r.subj, proj: f?.project?.key || '—',
       key: r.dev?.key || '—', st, out: r.dev ? outcome(st) : OUT_NODEV, dt: r2(r.hrs ?? 0),
       impg: inArea ? 'Software bug' : r.group.owner === 'go' ? 'GO owned' : r.group.owner === 'cu' ? 'Customer owned' : 'Not set',
       imp: inArea ? 'Software bug area' : r.group.col,
